@@ -18,6 +18,8 @@ from configparser import ConfigParser
 from ctypes import *
 import mimetypes
 
+import rewrapper
+
 version='4.01'
 
 def encipher(v, k):
@@ -182,34 +184,75 @@ def closeconn( s ):
     return None
 
 def find_max_buffer_size( opt ):
-
-    # we'll work in blocks of 256 bytes, to speed things up
-
-    # buffer size that works
-    minsize = 1
-
-    # smallest buffer size that is too large, i.e. bigger than our wanted maximum by 1
-    maxsize = 1024*1024*8 // 256 + 1
+    size = 1024*1024*8
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-    # there are good chances we are able to allocate the maximum buffer, so we initialize
-    # the midpoint to our wanted maximum
-    midpoint = maxsize - 1
-
-    while midpoint > minsize:
+    while size > 0 :
         try:
-#            print( 'trying', minsize, midpoint, maxsize)
-            sock.setsockopt(socket.SOL_SOCKET, opt, midpoint*256)
-            minsize = midpoint
-        except:
-            maxsize = midpoint
-
-        midpoint = (maxsize + minsize) // 2
-
-    size = minsize * 256
+ #           print( 'trying', size )
+            sock.setsockopt(socket.SOL_SOCKET, opt, size )
+            break
+        except : 
+            size = size - (1024*1024)
+            continue 
     if size < 1024*1024*8 :
         print('Warning TCP buffering might not be sufficent for reliable streaming')
-    return size
+    return size         
+        
+
+# my own file like object
+#class MyFileLikeObject(io.BufferedIOBase):
+#    pass
+
+class VideoRemuxer:
+
+    def __init__(self):
+        print('RRR video remuxer')
+        self.out_socket = 'test'
+
+    def run(self):
+        while True:
+            print('RRR', self.out_socket, end=' ', flush=True)
+            time.sleep(1)
+
+def stream_video_sendall(socket, data):
+    raise
+    # data is an ASF stream, video is h264, audio is aac
+    # remux it to a mp4 stream
+
+#    print(socket, len(data))
+    socket.sendall(data)
+
+#recode = StreamRecode(
+#    out_format='h265',
+#    codec='libx264',
+#)
+
+'''ffmpeg_process = (
+            ffmpeg
+           .input('-')
+           .output('-', format='h264')
+           .run_async(pipe_stdout=True, pipe_stdin=True)
+          )
+'''
+
+mp4wrapper = rewrapper.Mp4Rewrapper(bufsize=10*1024*1024)
+
+def process_video_stream(data):
+    if process_video_stream.timestamp:
+        timedelta = time.time() - process_video_stream.timestamp
+        speed = 8 * len(data) / timedelta
+#        print('Speed', speed, 'bits/sec')
+    else:
+        speed = 0
+    process_video_stream.timestamp = time.time()
+#    print('call rewrite', len(data))
+    recoded = mp4wrapper.rewrite(data)
+    if recoded:
+        print('got recoded', type(recoded), len(recoded)) 
+    return recoded, speed
+    #return data, speed
+
+process_video_stream.timestamp = None
 
 def streamer(maxstreams, config_fn, section_name, box_name, streamer_q, server_port):
     global streamer_qs, stati, num_streams
@@ -464,14 +507,17 @@ def streamer(maxstreams, config_fn, section_name, box_name, streamer_q, server_p
             audio_header = b'\xA1\xDC\xAB\x8C\x47\xA9\xCF\x11\x8E\xE6\x00\xC0\x0C\x20\x53\x65\x68'
             audio_header_pos = first_buffer.find( audio_header ) + 0x60 # find audio hdr
             first_buffer[audio_header_pos:audio_header_pos+10] = pack("H 8x", 0x9012)
-            
+
         stream_header = first_buffer[0:h264_header_pos]
         #print( 'SH', type(stream_header), pbuf(stream_header))
-        
+
         print(name,'Stream started at', ts(), len(stream_header), len(first_buffer[h264_header_pos:]))
+        stream_header_processed, speed = process_video_stream(stream_header)
         for s in streams :
             try:
-                s.sendall(stream_header)
+                if stream_header_processed:
+                    s.sendall(stream_header_processed)
+#                stream_video_sendall(s, stream_header_processed)
             except:
                 print(name, 'ERROR: Media Player closed connection immediately after receiving 200 OK')
                 return (s_ctl, None )
@@ -846,7 +892,7 @@ def streamer(maxstreams, config_fn, section_name, box_name, streamer_q, server_p
         stream_clients[client_socket] = client_addr  
         primary_stream_client = client_addr.split(':')[0]       
         streams.append(client_socket)
-        try: 
+        try:
             client_socket.sendall(OK)
             s_ctl, stream  = start_slingbox_session(streams)
 
@@ -864,6 +910,8 @@ def streamer(maxstreams, config_fn, section_name, box_name, streamer_q, server_p
                 if Solo and len(msg) > 0: 
                     try:
                         msg = process_solo_msg( msg, stream )
+                        if not msg:
+                            continue
                     except Exception as e:
                         print(name, 'Error Processing Solo Message. Stopping', e, traceback.print_exc())
                         break
@@ -878,12 +926,29 @@ def streamer(maxstreams, config_fn, section_name, box_name, streamer_q, server_p
                     break
                     
                 pc += 1
+
+                msg_processed, speed = process_video_stream(msg)
                 for stream_socket in streams:                    
                     try:
-                        sent = stream_socket.send(msg)
+                        if 1 or speed == 0 or speed > 100e3:
+                            if msg_processed:
+                                leftover = msg_processed
+                                while leftover:
+                                    try:
+                                        sent = stream_socket.send(leftover)
+                                    except BlockingIOError:
+                                        sent = 0
+                                    leftover_len = len(leftover) - sent
+                                    leftover = leftover[sent:]
+
+                                #sent = stream_socket.sendall(msg_processed)
+                        else:
+                            print('not sending, speed =', speed)
+#                        stream_video_sendall(stream_socket, msg)
                     except Exception as e:
                         if stream_socket in stream_clients.keys():
                             print(ts(), name, 'Stream Terminated for ', stream_clients[stream_socket])
+                            print(traceback.print_exc())
                             close_streaming_connection(stream_socket)
                         else:
                             print(ts(), name, 'Stream Terminated', e, traceback.print_exc())
@@ -911,7 +976,10 @@ def streamer(maxstreams, config_fn, section_name, box_name, streamer_q, server_p
                             my_num_streams = my_num_streams + 1
                             new_stream.sendall(OK)
                             stream_clients[new_stream], channel = parse_stream(data)
-                            new_stream.sendall(stream_header)
+#                            stream_video_sendall(new_stream, stream_header)
+                            stream_header_processed, speed = process_video_stream(stream_header)
+                            if stream_header_processed:
+                                new_stream.sendall(stream_header_processed)
                             print( name, 'New Stream Starting', channel)
                             if channel != '0':
                                 if not RemoteLock : StartChannel = channel
@@ -1697,6 +1765,9 @@ for config_fn in sys.argv[1:] :
         time.sleep(1) # give Flask sometime to start up makes logs easier to read
 
 Thread(target=BroadcastResponder).start() 
+VR = VideoRemuxer()
+#Thread(target=VR.run).start()
+
 
 try:
     import netifaces
