@@ -1209,15 +1209,14 @@ def ConnectionManager(config_fn):
                 continue
             try:
                 data = connection.recv(1024).decode("utf-8")
- #               print('DATA ', data);
+                data_lower = data.lower()
+                print('DATA ', data);
             except:
  #               print('bad data')
                 data = 'Bad Request' 
             
-            if ( 'remote' in data.lower() and ('GET' in data or 'POST' in data) and    remoteenabled ) or ('.php' in data) and 'HTTP' in data:
-                print(ts(), ' RemoteControl connection from', str(client_address))
-                Thread(target=remote_control_stream, args=(connection, client_address, data, local_port)).start()           
-            elif 'GET' in data and 'HTTP' in data:
+            if 'GET' in data and 'HTTP' in data \
+                 and not ('/remote' in data_lower or '/webplay' in data_lower or 'favicon.ico' in data_lower or '.php' in data_lower or '.html' in data_lower):
                 start_uri = data.find('GET') + 3
                 end_uri = data.find('HTTP', start_uri)
                 uri = data[start_uri:end_uri]
@@ -1249,6 +1248,9 @@ def ConnectionManager(config_fn):
                     #print(data)
                     connection = closeconn(connection)
                     continue
+            elif 'GET' in data or 'POST' in data and 'HTTP' in data:
+                print(ts(), ' RemoteControl connection from', str(client_address))
+                Thread(target=remote_control_stream, args=(connection, client_address, data, local_port)).start()
             elif data == 'GETSLINGBOXIDS': 
                 print('GETSLINGBOXIDS Request' );
                 connection.send(SendData(GetSlingboxIds(cp)))
@@ -1649,8 +1651,14 @@ for config_fn in sys.argv[1:] :
                         out = subprocess.run(["php", text], stdout=subprocess.PIPE)
       #                  print(out.stdout)
                         return out.stdout
+                    else: abort(404)
+                elif text.endswith('.html'):
+                    if os.path.exists(text):
+                        print('Returning HTML file', text)
+                        return send_file(text, mimetype='text/html')
+                    else: abort(404)
                 else:
- #                   print(text)
+                    print(text)
                     if os.path.exists(text):
                         mime = mimetypes.guess_type(text)[0]
  #                       print('Returning', text, mime)
