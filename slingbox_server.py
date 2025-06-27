@@ -1210,13 +1210,15 @@ def ConnectionManager(config_fn):
             try:
                 data = connection.recv(1024).decode("utf-8")
                 data_lower = data.lower()
+                data_1stline_lower = data_lower.split('\n',1)[0].strip().lower()
                 print('DATA ', data);
+                print('1stline', data_1stline_lower)
             except:
  #               print('bad data')
                 data = 'Bad Request' 
             
             if 'GET' in data and 'HTTP' in data \
-                 and not ('/remote' in data_lower or '/webplay' in data_lower or 'favicon.ico' in data_lower or '.php' in data_lower or '.html' in data_lower):
+                 and not ('/remote' in data_1stline_lower or '/webplay' in data_1stline_lower or 'favicon.ico' in data_1stline_lower or '.php' in data_1stline_lower or '.html' in data_1stline_lower):
                 start_uri = data.find('GET') + 3
                 end_uri = data.find('HTTP', start_uri)
                 uri = data[start_uri:end_uri]

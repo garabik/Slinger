@@ -4,96 +4,143 @@
         <meta name="viewport" content="width=device-width,initial-scale=1">
         <title>WebPlay</title>
         <style>
-#player {
-    display: flex;
-    width: auto;    /* starting size, can be whatever */
-    height: auto;   /* or you can let height:auto */
-    margin: auto;
-}
 
 #remote {
-        flex: 0 0 auto;
-        top: 0;
-        left: 0;
-        height: 100vh;
-        max-width: 50vw;
-        width: 100%;
-        display: flex;
-        justify-content: left;
-        align-items: center;
-        border: none;
-        background-color: rgba(0, 0, 0, 0.2);
-    }
-    
-#remote iframe {
-                width: 100%;
-                height: 101vh;
-                border: none;
-                overflow: scroll;
-                display: block;
-            }
-
-#videowrap {
-        flex: 1 1 auto;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                max-width: 100%;
-                max-height: 100%;
-                height: 100vh;
-                width: auto;
-                margin: 0 auto;
-                background-color: green;
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  max-width: 100%;
+  width: auto;
+  justify-content: left;
+  align-items: center;
+  border: none;
+  background-color: rgba(0, 0, 0, 0.2);
 }
 
-            video {
-                object-fit: contain;
-                max-width: 100%;
-                width: 100%;
-/*                aspect-ratio: 4 / 3; */
-                background-color: red;
-            }
+#remote iframe {
+  width: 100%;
+  height: 100vh;
+  border: none;
+  overflow: scroll;
+  display: block;
+}
 
-body {
-                margin: 0;
-                padding: 0;
-                overflow: hidden;
-            }
+#video {
+  object-fit: fill;
+  max-width: 100%;
+  max-height: 100%;
+  width: 100%;
+  background-color: red;
+}
 
-html {
-                height: 100%;
-                width: 100%;
-            }
+#videoaspect {
+    background-color: blue;
+    width: 100%;
+    height: 100%;
+}
+
+#videowrap {
+    width: 100%;
+    height: 100%;
+    margin: auto;
+    background-color: magenta;
+    z-index: 1;
+}
+
+#videocontrols {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 90%;
+
         </style>
     </head>
 <body>
+
 <div id="player">
-   <div id="remote" style="display: flex" >
-    <iframe src="/Remote" ></iframe>
-   </div>
-  <div id="videowrap">
-    <video controls preload="none" >
-        <source src="/slingbox" type="video/mp4" />
-        Your browser does not support the video tag.
-    </video>
+  <div id="remote" style="display: none;">
+        <iframe id="remoteframe" src="Remote.html" frameborder="0"></iframe>
   </div>
+
+  <div id="videowrap" >
+      <div id="videocontrols">
+        <button id="videoplay" onclick="document.getElementById('video').play()">⏵</button>
+        <button id="fullscreen" onclick="toggleFullscreen()">FS</button>
+        <button id="remotebutton" onclick="toggleRemote()">RM</button>
+        <!-- button id="changeaspect" onclick="toggleAspect()">A/R</button> -->
+      </div>
+      <div id="videoaspect" onclick="toggleRemote()">
+        <video id="video" preload="none" loop onclick="toggleRemote()">
+            <source src="/slingbox" type="video/mp4" />
+            Your browser does not support the video tag.
+        </video>
+      </div> <!-- videoaspect -->
+  </div> <!-- videowrap -->
 </div> <!-- player -->
 
+
 <script>
-// function to toggle remote
+
 function toggleRemote() {
+    var playerDiv = document.getElementById('player');
     var remoteDiv = document.getElementById('remote');
     if (remoteDiv.style.display === 'none' || remoteDiv.style.display === '') {
-        remoteDiv.style.display = 'flex'; // Show the remote
+        remoteDiv.style.display = 'block'; // Show the remote
     } else {
         remoteDiv.style.display = 'none'; // Hide the remote
     }
-}
-// capture click on the video element to toggle visibility of the remote div
-document.getElementById('videowrap').addEventListener('click', function() {
-    alert("Click on the video to toggle the remote control visibility.");
-    toggleRemote();
+    videoFill(); // Recalculate video aspect ratio
     event.stopPropagation();
+}
+
+
+function videoFill() {
+    // get videowrap size
+    var videowrap = document.getElementById('videowrap');
+    // get the width and height of the videowrap div
+    var wrapWidth = videowrap.offsetWidth;
+    var wrapHeight = videowrap.offsetHeight;
+    // if the width is greater than the height * 16/9, keep the height but reduce the width
+    newWidth = wrapWidth;
+    newHeight = wrapHeight;
+    if (wrapWidth > wrapHeight * (16 / 9)) {
+        // reduce the width to fit the height
+        newWidth = wrapHeight * (16 / 9);
+    } else {
+        // if the height is greater than the width * 9/16, keep the width but reduce the height
+        newHeight = wrapWidth * (9 / 16);
+    };
+    var videoaspect = document.getElementById('videoaspect');
+    videoaspect.style.width = newWidth + 'px';
+    videoaspect.style.height = newHeight + 'px';
+    video.style.width = newWidth + 'px';
+    video.style.height = newHeight  + 'px';
+    console.log(`Video aspect ratio set to ${newWidth}x${newHeight}`);
+};
+
+function toggleFullscreen() {
+    var videowrap = document.getElementById('player');
+    console.log(`Toggling fullscreen for videowrap: ${videowrap}`);
+    if (document.fullscreenElement) {
+        document.exitFullscreen();
+    } else {
+        videowrap.requestFullscreen = videowrap.requestFullscreen || videowrap.webkitRequestFullscreen || videowrap.mozRequestFullScreen || videowrap.msRequestFullscreen;
+        videowrap.requestFullscreen().catch(err => {
+            console.error(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
+        });
+    };
+    videoFill();
+};
+}
+
+// if there is an error playing the video, sleep 1 sec and try again
+document.getElementById('video').addEventListener('error', function() {
+    alert('Error playing video, retrying in 1 second...');
+    setTimeout(function() {
+        document.getElementById('video').load();
+        document.getElementById('video').play()
+    }, 1000);
 });
 
 
