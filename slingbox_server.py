@@ -481,6 +481,7 @@ def streamer(maxstreams, config_fn, section_name, box_name, streamer_q, server_p
 
         print(name,'Stream started at', ts(), len(stream_header), len(first_buffer[h264_header_pos:]))
         stream_header_remuxed, speed = remux_video_stream(mp4wrapper, stream_header)
+        print('header remuxed', len(stream_header_remuxed)
         for s in streams :
             try:
                 if stream_header_remuxed:
