@@ -484,6 +484,7 @@ def streamer(maxstreams, config_fn, section_name, box_name, streamer_q, server_p
         for s in streams :
             try:
                 if stream_header_remuxed:
+                    print('sendall remuxed header')
                     s.sendall(stream_header_remuxed)
             except:
                 print(name, 'ERROR: Media Player closed connection immediately after receiving 200 OK')
@@ -567,6 +568,9 @@ def streamer(maxstreams, config_fn, section_name, box_name, streamer_q, server_p
     ################## START of Streamer Execution
     print('Streamer Running: ', maxstreams, config_fn, section_name, box_name, server_port, max_recv_tcp_buffer)
     OK = b'HTTP/1.0 200 OK\r\nContent-type: application/octet-stream\r\nCache-Control: no-cache\r\nConnection: keep-alive\r\n\r\n'
+    OK = b'HTTP/1.0 200 OK\r\nContent-type: video/mp4\r\nCache-Control: no-cache\r\nConnection: keep-alive\r\n\r\n'
+
+
     ERROR =b'HTTP/1.0 503 ERROR\r\nContent-type: application/octet-stream\r\nCache-Control: no-cache\r\nConnection: close\r\n\r\n'
     stream_clients = {}
     cp = ConfigParser()
@@ -942,12 +946,13 @@ def streamer(maxstreams, config_fn, section_name, box_name, streamer_q, server_p
                         elif not start_streaming_connection(data) :
                             print(name, 'Video Stream Startup Error')
                             new_stream.sendall(ERROR)
-                            new_steam = closeconn(new_stream)
+                            new_stream = closeconn(new_stream)
                         else:
                             my_num_streams = my_num_streams + 1
                             new_stream.sendall(OK)
                             stream_clients[new_stream], channel = parse_stream(data)
                             if stream_header_remuxed:
+                                print('sending remuxed header')
                                 new_stream.sendall(stream_header_remuxed)
                             print( name, 'New Stream Starting', channel)
                             if channel != '0':
@@ -1237,9 +1242,9 @@ def ConnectionManager(config_fn):
                 if not unified_config:
                     if streamer_name == '/' : streamer_name = str(local_port)
                     else: streamer_name += '/%d' % (local_port)
-    #            print('URI', streamer_name, channel )
+                print('URI', streamer_name, channel )
                 
- #               print('Streamer Name', streamer_name, channel)
+                print('Streamer Name', streamer_name, channel)
                 if streamer_name in streamer_qs.keys():
                     print('STREAM=%s:%d:%s' % (client_address[0], client_address[1], channel))
                     streamer_q = streamer_qs[streamer_name]

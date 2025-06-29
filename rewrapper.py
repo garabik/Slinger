@@ -62,8 +62,13 @@ class Mp4Rewrapper:
 
 
     def close(self):
+        print('closing ffmpeg')
         # signal EOF to ffmpeg, let it finish writing final atoms
         with self.lock:
             self.proc.stdin.close()
         self.proc.wait()
+
+    def __del__(self):
+        print('del rewrap')
+        self.close()
 
