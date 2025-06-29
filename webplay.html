@@ -65,13 +65,13 @@
 
   <div id="videowrap" >
       <div id="videocontrols">
-        <button id="videoplay" onclick="document.getElementById('video').play()">⏵</button>
+        <button id="videoplay" onclick="videoPlay()">⏵</button>
         <button id="fullscreen" onclick="toggleFullscreen()">FS</button>
         <button id="remotebutton" onclick="toggleRemote()">RM</button>
         <!-- button id="changeaspect" onclick="toggleAspect()">A/R</button> -->
       </div>
-      <div id="videoaspect" onclick="toggleRemote()">
-        <video id="video" preload="none" loop onclick="toggleRemote()">
+      <div id="videoaspect"> <!-- onclick="toggleRemote()" -->
+	      <video id="video" preload="none" > <!-- onclick="toggleRemote()" -->
             <source src="/slingbox" type="video/mp4" />
             Your browser does not support the video tag.
         </video>
@@ -79,8 +79,14 @@
   </div> <!-- videowrap -->
 </div> <!-- player -->
 
+<!-- script src="webplay-mse.js"></script --> 
 
 <script>
+
+function videoPlay() {
+    console.log("video play request");
+    document.getElementById('video').play()
+};
 
 function toggleRemote() {
     var playerDiv = document.getElementById('player');
@@ -132,7 +138,6 @@ function toggleFullscreen() {
     };
     videoFill();
 };
-}
 
 // if there is an error playing the video, sleep 1 sec and try again
 document.getElementById('video').addEventListener('error', function() {
