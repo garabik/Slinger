@@ -210,8 +210,7 @@ def remux_video_stream(mp4wrapper, data):
     remux_video_stream.timestamp = time.time()
 #    print('call rewrite', len(data))
     recoded = mp4wrapper.rewrite(data)
-#    if recoded:
-#        print('remuxed',  len(recoded), end='    \r')
+#    if recoded: print('remuxed',  len(recoded), end='    \r')
     return recoded, speed
     #return data, speed
 
@@ -481,7 +480,8 @@ def streamer(maxstreams, config_fn, section_name, box_name, streamer_q, server_p
 
         print(name,'Stream started at', ts(), len(stream_header), len(first_buffer[h264_header_pos:]))
         stream_header_remuxed, speed = remux_video_stream(mp4wrapper, stream_header)
-        print('header remuxed', len(stream_header_remuxed)
+        print('header remuxed', len(stream_header_remuxed))
+        print('streams:', streams)
         for s in streams :
             try:
                 if stream_header_remuxed:
@@ -783,6 +783,7 @@ def streamer(maxstreams, config_fn, section_name, box_name, streamer_q, server_p
     print(name, 'Using slingbox at ', sling_net_address)
     while True:
         stream_header = None
+        stream_header_remuxed = None
         streams = []
         # Wait for first stream request to arrive
         cp = ConfigParser()
@@ -904,6 +905,7 @@ def streamer(maxstreams, config_fn, section_name, box_name, streamer_q, server_p
                     try:
                         if 1 or speed == 0 or speed > 100e3:
                             if msg_remuxed:
+                                print('sending ', len(msg_remuxed))
                                 leftover = msg_remuxed
                                 while leftover:
                                     try:

@@ -27,7 +27,7 @@ class Mp4Rewrapper:
 #                    movflags='frag_keyframe+empty_moov+default_base_moof+faststart+separate_moof',
                     absf='aac_adtstoasc',
                     )
-            .run_async(pipe_stdin=True, pipe_stdout=True)#, pipe_stderr=True)
+            .run_async(quiet=True, pipe_stdin=True, pipe_stdout=True)#, pipe_stderr=True)
         )
         self.lock = threading.Lock()  # make thread-safe if you want to write/read from multiple threads
         os.set_blocking(self.proc.stdout.fileno(), False)
@@ -38,7 +38,7 @@ class Mp4Rewrapper:
         You can call this repeatedly, and it will keep producing
         valid MP4 fragments as soon as enough input has accumulated.
         """
-
+        #print(self.lock)
         with self.lock:
             # send the next piece of raw stream
             self.proc.stdin.write(in_chunk)
