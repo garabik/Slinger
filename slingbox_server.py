@@ -204,15 +204,13 @@ def remux_video_stream(mp4wrapper, data):
     if remux_video_stream.timestamp:
         timedelta = time.time() - remux_video_stream.timestamp
         speed = 8 * len(data) / timedelta
-#        print('Speed', speed, 'bits/sec')
+#        print('Speed', speed, 'bits/sec', end='     \r')
     else:
         speed = 0
     remux_video_stream.timestamp = time.time()
-#    print('call rewrite', len(data))
     recoded = mp4wrapper.rewrite(data)
 #    if recoded: print('remuxed',  len(recoded), end='    \r')
-    return recoded, speed
-    #return data, speed
+    return recoded
 
 remux_video_stream.timestamp = None
 
@@ -479,7 +477,7 @@ def streamer(maxstreams, config_fn, section_name, box_name, streamer_q, server_p
         #print( 'SH', type(stream_header), pbuf(stream_header))
 
         print(name,'Stream started at', ts(), len(stream_header), len(first_buffer[h264_header_pos:]))
-        stream_header_remuxed, speed = remux_video_stream(mp4wrapper, stream_header)
+        stream_header_remuxed = remux_video_stream(mp4wrapper, stream_header)
         print('header remuxed', len(stream_header_remuxed))
         print('streams:', streams)
         for s in streams :
@@ -900,28 +898,21 @@ def streamer(maxstreams, config_fn, section_name, box_name, streamer_q, server_p
                     
                 pc += 1
 
-                msg_remuxed, speed = remux_video_stream(mp4wrapper, msg)
+                msg_remuxed = remux_video_stream(mp4wrapper, msg)
                 for stream_socket in streams:                    
                     try:
-                        if 1 or speed == 0 or speed > 100e3:
-                            if msg_remuxed:
-                                print('sending ', len(msg_remuxed))
-                                leftover = msg_remuxed
-                                while leftover:
-                                    try:
-                                        sent = stream_socket.send(leftover)
-                                    except BlockingIOError:
-                                        sent = 0
-                                        print('client blocks')
-                                        #sent = len(leftover)
-                                    except (BrokenPipeError, ConnectionResetError):
-                                        raise
-                                    leftover_len = len(leftover) - sent
-                                    leftover = leftover[sent:]
-
-                        else:
-                            print('not sending, speed =', speed)
-#                        stream_video_sendall(stream_socket, msg)
+                        if msg_remuxed:
+                            leftover = msg_remuxed
+                            while leftover:
+                                try:
+                                    sent = stream_socket.send(leftover)
+                                except BlockingIOError:
+                                    sent = 0
+                                    print('client blocks')
+                                    #sent = len(leftover)
+                                except (BrokenPipeError, ConnectionResetError):
+                                    raise
+                                leftover = leftover[sent:]
                     except Exception as e:
                         if stream_socket in stream_clients.keys():
                             print(ts(), name, 'Stream Terminated for ', stream_clients[stream_socket])
