@@ -27,7 +27,7 @@ class Mp4Rewrapper:
 #                    movflags='frag_keyframe+empty_moov+default_base_moof+faststart+separate_moof',
                     absf='aac_adtstoasc',
                     )
-            .run_async(quiet=True, pipe_stdin=True, pipe_stdout=True)#, pipe_stderr=True)
+            .run_async(quiet=False, pipe_stdin=True, pipe_stdout=True)#, pipe_stderr=True)
         )
         self.lock = threading.Lock()  # make thread-safe if you want to write/read from multiple threads
         os.set_blocking(self.proc.stdout.fileno(), False)

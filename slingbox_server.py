@@ -482,6 +482,7 @@ def streamer(maxstreams, config_fn, section_name, box_name, streamer_q, server_p
         print('streams:', streams)
         for s in streams :
             try:
+                # this does not work, stream_header_remuxed is most likely empty, because remux_video_stream did not yet return any data
                 if stream_header_remuxed:
                     print('sendall remuxed header')
                     s.sendall(stream_header_remuxed)
@@ -899,7 +900,9 @@ def streamer(maxstreams, config_fn, section_name, box_name, streamer_q, server_p
                 pc += 1
 
                 msg_remuxed = remux_video_stream(mp4wrapper, msg)
-                for stream_socket in streams:                    
+                if len(stream_header_remuxed) == 0: # ugly hack to give other players at least some initial data
+                    stream_header_remuxed = msg_remuxed
+                for stream_socket in streams:
                     try:
                         if msg_remuxed:
                             leftover = msg_remuxed
