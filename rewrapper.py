@@ -17,6 +17,7 @@ class Mp4Rewrapper:
                     vcodec='copy',
                     acodec='copy',
                     drop_pkts_on_overflow=True,
+                    attempt_recovery=True,
                     #fflags='nobuffer+genpts+discardcorrupt+flush_packets',
                     fflags='nobuffer+discardcorrupt+flush_packets',
                     flags='+global_header',

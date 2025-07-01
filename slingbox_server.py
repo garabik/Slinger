@@ -199,6 +199,24 @@ def find_max_buffer_size( opt ):
     return size         
         
 
+def sure_sendall(sock, data, timeout=1):
+    # Ensure that all data is sent, even if the socket is non-blocking and raises an Exception
+
+    end_time = time.time() + timeout
+    leftover = data
+    while leftover:
+        try:
+            sent = stream_socket.send(leftover)
+        except BlockingIOError:
+            sent = 0
+            print('client blocks')
+        #except (BrokenPipeError, ConnectionResetError):
+        #    raise
+
+        leftover = leftover[sent:]
+        if time.time() > end_time:
+            print('socket timeout', sock)
+            break
 
 def remux_video_stream(mp4wrapper, data):
     if remux_video_stream.timestamp:
@@ -905,17 +923,7 @@ def streamer(maxstreams, config_fn, section_name, box_name, streamer_q, server_p
                 for stream_socket in streams:
                     try:
                         if msg_remuxed:
-                            leftover = msg_remuxed
-                            while leftover:
-                                try:
-                                    sent = stream_socket.send(leftover)
-                                except BlockingIOError:
-                                    sent = 0
-                                    print('client blocks')
-                                    #sent = len(leftover)
-                                except (BrokenPipeError, ConnectionResetError):
-                                    raise
-                                leftover = leftover[sent:]
+                            sure_sendall(stream_socket, msg_remuxed)
                     except Exception as e:
                         if stream_socket in stream_clients.keys():
                             print(ts(), name, 'Stream Terminated for ', stream_clients[stream_socket])
@@ -946,11 +954,12 @@ def streamer(maxstreams, config_fn, section_name, box_name, streamer_q, server_p
                             new_stream = closeconn(new_stream)
                         else:
                             my_num_streams = my_num_streams + 1
-                            new_stream.sendall(OK)
+#                            new_stream.sendall(OK)
+                            sure_sendall(new_stream, OK)
                             stream_clients[new_stream], channel = parse_stream(data)
                             if stream_header_remuxed:
                                 print('sending remuxed header')
-                                new_stream.sendall(stream_header_remuxed)
+                                sure_sendall(new_stream, stream_header_remuxed)
                             print( name, 'New Stream Starting', channel)
                             if channel != '0':
                                 if not RemoteLock : StartChannel = channel
