@@ -17,6 +17,7 @@ from struct import pack, unpack, calcsize
 from configparser import ConfigParser
 from ctypes import *
 import mimetypes
+from urllib.parse import urlparse, parse_qs
 
 import rewrapper
 
@@ -206,7 +207,7 @@ def sure_sendall(sock, data, timeout=1):
     leftover = data
     while leftover:
         try:
-            sent = stream_socket.send(leftover)
+            sent = sock.send(leftover)
         except BlockingIOError:
             sent = 0
             print('client blocks')
@@ -1238,10 +1239,25 @@ def ConnectionManager(config_fn):
                 connection.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
                 connection.setblocking(False)
                 
-                try:
-                    streamer_name, channel = uri.split('?')
-                    channel = int(channel.split('=')[1])
-                except : 
+                if '?' in uri:
+                    parsed_uri = urlparse(uri)
+                    streamer_name = parsed_uri.path
+                    parsed_qs = parse_qs(parsed_uri.query)
+                    print('Parsed qs', parsed_qs)
+                    do_remux = False
+                    if parsed_qs:
+                        if 'remux' in parsed_qs:
+                            do_remux = parsed_qs['remux'][0].lower() in ('yes', 'true', '1')
+                            del parsed_qs['remux']
+                    if parsed_qs:
+                        # for backward compatibility, anything can be a key
+                        arbitrary_key = list(parsed_qs.keys())[0]
+                        channel = parsed_qs[arbitrary_key][0]
+                        try:
+                            channel = int(channel)
+                        except:
+                            channel = 0
+                else:
                     streamer_name = data[start_uri:end_uri]
                     channel = 0
                 streamer_name = streamer_name.strip()

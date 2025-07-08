@@ -16,16 +16,15 @@ class Mp4Rewrapper:
                     format='mp4',
                     vcodec='copy',
                     acodec='copy',
-                    drop_pkts_on_overflow=True,
-                    attempt_recovery=True,
+                    # these two options are not present in older ffmpeg
+                    # drop_pkts_on_overflow=True,
+                    # attempt_recovery=True,
                     #fflags='nobuffer+genpts+discardcorrupt+flush_packets',
                     fflags='nobuffer+discardcorrupt+flush_packets',
                     flags='+global_header',
                     probesize=32,
-#                    frag_size=frag_size,
-                    frag_duration = 100_000,  # 0.1 sec
+                    frag_duration = 200000,  # 0.2 sec
                     movflags='frag_keyframe+empty_moov+default_base_moof+separate_moof',
-#                    movflags='frag_keyframe+empty_moov+default_base_moof+faststart+separate_moof',
                     absf='aac_adtstoasc',
                     )
             .run_async(quiet=False, pipe_stdin=True, pipe_stdout=True)#, pipe_stderr=True)
