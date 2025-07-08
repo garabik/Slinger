@@ -205,14 +205,13 @@ def sure_sendall(sock, data, timeout=1):
 
     end_time = time.time() + timeout
     leftover = data
+
     while leftover:
         try:
             sent = sock.send(leftover)
         except BlockingIOError:
             sent = 0
             print('client blocks')
-        #except (BrokenPipeError, ConnectionResetError):
-        #    raise
 
         leftover = leftover[sent:]
         if time.time() > end_time:
@@ -500,11 +499,16 @@ def streamer(maxstreams, config_fn, section_name, box_name, streamer_q, server_p
         print('header remuxed', len(stream_header_remuxed))
         print('streams:', streams)
         for s in streams :
+            do_remux = remux_connections.get(s, False)
             try:
                 # this does not work, stream_header_remuxed is most likely empty, because remux_video_stream did not yet return any data
-                if stream_header_remuxed:
-                    print('sendall remuxed header')
-                    s.sendall(stream_header_remuxed)
+                if do_remux:
+                    if stream_header_remuxed:
+                        print('sendall remuxed header')
+                        s.sendall(stream_header_remuxed)
+                else:
+                    if stream_header:
+                        s.sendall(stream_header)
             except:
                 print(name, 'ERROR: Media Player closed connection immediately after receiving 200 OK')
                 return (s_ctl, None )
@@ -922,9 +926,14 @@ def streamer(maxstreams, config_fn, section_name, box_name, streamer_q, server_p
                 if len(stream_header_remuxed) == 0: # ugly hack to give other players at least some initial data
                     stream_header_remuxed = msg_remuxed
                 for stream_socket in streams:
+                    do_remux = remux_connections.get(stream_socket, False)
                     try:
-                        if msg_remuxed:
-                            sure_sendall(stream_socket, msg_remuxed)
+                        if do_remux:
+                            if msg_remuxed:
+                                sure_sendall(stream_socket, msg_remuxed)
+                        else:
+                            if msg:
+                                sure_sendall(stream_socket, msg)
                     except Exception as e:
                         if stream_socket in stream_clients.keys():
                             print(ts(), name, 'Stream Terminated for ', stream_clients[stream_socket])
@@ -1147,6 +1156,7 @@ def ConnectionManager(config_fn):
         return data 
         
     global streamer_qs
+    global remux_connections # keeps track which connections (sockets) to remux to mp4
 
     streamer_q = None
     cp = ConfigParser()
@@ -1238,19 +1248,19 @@ def ConnectionManager(config_fn):
                 connection.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, max_send_tcp_size )
                 connection.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
                 connection.setblocking(False)
-                
+                do_remux = False
+                channel = 0
                 if '?' in uri:
                     parsed_uri = urlparse(uri)
                     streamer_name = parsed_uri.path
                     parsed_qs = parse_qs(parsed_uri.query)
                     print('Parsed qs', parsed_qs)
-                    do_remux = False
                     if parsed_qs:
                         if 'remux' in parsed_qs:
-                            do_remux = parsed_qs['remux'][0].lower() in ('yes', 'true', '1')
+                            do_remux = parsed_qs['remux'][0].strip().lower() in ('yes', 'true', '1')
                             del parsed_qs['remux']
                     if parsed_qs:
-                        # for backward compatibility, anything can be a key
+                        # for backward compatibility, anything can be a key, and the value is the channel number
                         arbitrary_key = list(parsed_qs.keys())[0]
                         channel = parsed_qs[arbitrary_key][0]
                         try:
@@ -1271,6 +1281,7 @@ def ConnectionManager(config_fn):
                     print('STREAM=%s:%d:%s' % (client_address[0], client_address[1], channel))
                     streamer_q = streamer_qs[streamer_name]
                     streamer_q.put( bytearray(1) + bytes('STREAM=%s:%d:%s' % (client_address[0], client_address[1], channel), 'utf-8'))
+                    remux_connections[connection] = do_remux
                     streamer_q.put(connection)
                 else:
                     print("Error: Can't find streamer for", streamer_name, 'in', streamer_qs.keys())
@@ -1620,6 +1631,7 @@ mypid = os.getpid()
 print( 'Version :', version, 'Running on', platform.platform(), 'pid=', mypid, sys.argv[0])
 
 streamer_qs = {}
+remux_connections = {} # keeps track which connections (sockets) to remux to mp4
 stati = {}
 remotes = {}
 finderids = {}
