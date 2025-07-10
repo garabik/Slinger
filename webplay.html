@@ -1,27 +1,41 @@
 <!DOCTYPE html>
 <html>
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width,initial-scale=1">
-        <title>WebPlay</title>
-        <style>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Slinger WebPlay</title>
+    <style>
+
+html, body {
+  height:100%;
+  width:100%;
+  margin:0;
+}
+
+#player {
+  display: flex;
+  flex-wrap: wrap;
+  flex-direction: row;
+}
 
 #remote {
   position: absolute;
   top: 0;
   left: 0;
-  height: 100vh;
+  height: 100%;
   max-width: 100%;
-  width: auto;
+  width: 35vw;
   justify-content: left;
   align-items: center;
   border: none;
   background-color: rgba(0, 0, 0, 0.2);
+  z-index: 20;
 }
 
 #remote iframe {
   width: 100%;
-  height: 100vh;
+  height: 100%;
   border: none;
   overflow: scroll;
   display: block;
@@ -32,48 +46,75 @@
   max-width: 100%;
   max-height: 100%;
   width: 100%;
-  background-color: red;
+  background-color: blue;
 }
 
 #videoaspect {
-    background-color: blue;
-    width: 100%;
-    height: 100%;
+  background-color: yellow;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  z-index: 1;
 }
 
 #videowrap {
-    width: 100%;
-    height: 100%;
-    margin: auto;
-    background-color: magenta;
-    z-index: 1;
+  width: 100%;
+  height: 100%;
+  margin: auto;
+  background-color: rgba(.1, 0, .1, 0.2);
+  z-index: 10;
 }
 
 #videocontrols {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 90%;
+  position: absolute;
+  bottom: 0;
+  left: 40vw;
+  width: 50vw;
+  z-index: 30;
+}
 
-        </style>
-    </head>
-<body>
+#videocontrols button {
+  background-color: #333;
+  color: white;
+  border: none;
+  border-radius: 0.3em;
+  padding: 0.5em 0.5em;
+  margin: 0.2em;
+  cursor: hand;
+  font-family: monospace;
+  height: 5ex;
+}
+
+#ir {
+  color: white;
+  background-color: gray;
+  border-radius: 0.3em;
+  position: absolute;
+  display: none;
+}
+
+    </style>
+</head>
+
+<body onload="bodyLoad();">
 
 <div id="player">
+  <div id="ir" style="display:none;">⇈ </div>
   <div id="remote" style="display: none;">
         <iframe id="remoteframe" src="Remote.html" frameborder="0"></iframe>
   </div>
-
-  <div id="videowrap" >
-      <div id="videocontrols">
-        <button id="videoplay" onclick="videoPlay()">⏵</button>
-        <button id="fullscreen" onclick="toggleFullscreen()">FS</button>
-        <button id="remotebutton" onclick="toggleRemote()">RM</button>
-        <!-- button id="changeaspect" onclick="toggleAspect()">A/R</button> -->
-      </div>
-      <div id="videoaspect"> <!-- onclick="toggleRemote()" -->
-	      <video id="video" preload="none" > <!-- onclick="toggleRemote()" -->
-            <source src="/slingbox?remux=1" type="video/mp4" />
+  <div id="videocontrols">
+    <button id="cnt_videoplay" onclick="videoPlay();">⏵Play</button>
+    <button id="cnt_fullscreen" onclick="toggleFullscreen();"><sup>⇱</sup><sub>⇲</sub>Fullscreen</button>
+    <button id="cnt_remotebutton" onclick="toggleRemote();">&#x1F3AE;Remote</button>
+    <button id="cnt_mute" onclick=toggleMute();>&#x1F507;Mute</button>
+    <button id="cnt_reload" onclick=reloadPage();>↻Reload</button>
+    <!-- button id="changeaspect" onclick="toggleAspect();">A/R</button> -->
+  </div>
+  <div id="videowrap" onclick="toggleRemoteAndControls();" ondblclick="toggleFullscreen();">
+      <div id="videoaspect">
+        <video id="video" preload="none" > <!-- onclick="toggleRemote()" -->
+              <!--            <source id="videosource" src="none" type="video/mp4" /> -->
             Your browser does not support the video tag.
         </video>
       </div> <!-- videoaspect -->
@@ -84,23 +125,55 @@
 
 <script>
 
+function bodyLoad() {
+    video_random_id = Math.round(Math.random() * 1000000);
+    console.log("body loaded, video id: " + video_random_id);
+    video = document.getElementById('video');
+    video.src = '/slingbox?remux=1&dummy=' + video_random_id;
+};
+
+function reloadPage() {
+    console.log("Reloading page");
+    location.reload();
+};
+
 function videoPlay() {
     console.log("video play request");
     document.getElementById('video').play()
 };
 
 function toggleRemote() {
-    var playerDiv = document.getElementById('player');
     var remoteDiv = document.getElementById('remote');
     if (remoteDiv.style.display === 'none' || remoteDiv.style.display === '') {
-        remoteDiv.style.display = 'block'; // Show the remote
+        remoteDiv.style.display = 'block'; // Show the remote and controls
     } else {
-        remoteDiv.style.display = 'none'; // Hide the remote
+        remoteDiv.style.display = 'none'; // Hide the remote and controls
     }
     videoFill(); // Recalculate video aspect ratio
     event.stopPropagation();
 }
 
+function toggleRemoteAndControls() {
+    var videocontrolsDiv = document.getElementById('videocontrols');
+    var remoteDiv = document.getElementById('remote');
+    toggleRemote(); // Toggle remote visibility
+
+    // make the video control follow the remote visibility
+    if (remoteDiv.style.display === 'none' || remoteDiv.style.display === '') {
+        videocontrolsDiv.style.display = 'none';
+    } else {
+        videocontrolsDiv.style.display = 'block';
+    }
+}
+
+function toggleMute() {
+    var video = document.getElementById('video');
+    if (video.muted) {
+        video.muted = false;
+    } else {
+        video.muted = true;
+    }
+};
 
 function videoFill() {
     // get videowrap size
@@ -113,16 +186,18 @@ function videoFill() {
     newHeight = wrapHeight;
     if (wrapWidth > wrapHeight * (16 / 9)) {
         // reduce the width to fit the height
-        newWidth = wrapHeight * (16 / 9);
+        newWidth = Math.round(wrapHeight * (16 / 9));
     } else {
         // if the height is greater than the width * 9/16, keep the width but reduce the height
-        newHeight = wrapWidth * (9 / 16);
+        newHeight = Math.round(wrapWidth * (9 / 16));
     };
+    newWidth = Math.max(newWidth, 160); // minimum width
+    newHeight = Math.max(newHeight, 90); // minimum height
     var videoaspect = document.getElementById('videoaspect');
     videoaspect.style.width = newWidth + 'px';
     videoaspect.style.height = newHeight + 'px';
-    video.style.width = newWidth + 'px';
-    video.style.height = newHeight  + 'px';
+//    video.style.width = newWidth + 'px';
+//    video.style.height = newHeight  + 'px';
     console.log(`Video aspect ratio set to ${newWidth}x${newHeight}`);
 };
 
@@ -137,17 +212,125 @@ function toggleFullscreen() {
             console.error(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
         });
     };
-    videoFill();
+    setTimeout(() => {
+        videoFill(); // Recalculate video aspect ratio after fullscreen change
+    }, 500);
 };
+
+/*
+var timeout = null;
+function windowResize() {
+    if (timeout) {
+        clearTimeout(timeout);
+    }
+    timeout = setTimeout(function() {
+        console.log('Window resized, recalculating video aspect ratio');
+        videoFill(); // Recalculate video aspect ratio on window resize
+    }, 500);
+};
+*/
 
 // if there is an error playing the video, sleep 1 sec and try again
 document.getElementById('video').addEventListener('error', function() {
-    alert('Error playing video, retrying in 1 second...');
+    //alert('Error playing video, retrying in 1 second...');
     setTimeout(function() {
-        document.getElementById('video').load();
+      //  document.getElementById('video').load();
         document.getElementById('video').play()
     }, 1000);
 });
+
+const irFlash = [
+  { color: "red" },
+  { color: "white" },
+];
+
+const irFlashTiming = {
+  duration: 100,
+  iterations: 1,
+};
+
+
+function sendCode(buttonName, buttonValue) {
+    const dataString = encodeURIComponent(buttonName) + '=' + encodeURIComponent(buttonValue);
+    const xhr = new XMLHttpRequest(); // Create XHR object
+    xhr.open('POST', ''); // Set request method and URL
+    xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+    xhr.onload = () => {
+      if (xhr.status === 200) {
+        // console.log('Button code submitted successfully:', buttonName, buttonValue);
+          ir_elem = document.getElementById('ir');
+          if (ir_elem) {
+                ir_elem.style.display = 'block';
+                document.getElementById('ir').animate(irFlash, irFlashTiming);
+                setTimeout(() => {
+                    ir_elem.style.display = 'none';
+                }, 250);
+            } else {
+                console.log('No IR element found');
+            }
+      } else {
+        console.error('Error submitting:', xhr.statusText);
+      }
+    };
+    xhr.send(dataString);
+}
+
+
+// control the remote with your keyboard
+const keyMap = new Map();
+
+// event.key, slingbox keycode
+keyMap.set('0',         18);
+keyMap.set('1',          9);
+keyMap.set('2',         10);
+keyMap.set('3',         11);
+keyMap.set('4',         12);
+keyMap.set('5',         13);
+keyMap.set('6',         14);
+keyMap.set('7',         15);
+keyMap.set('8',         16);
+keyMap.set('9',         17);
+keyMap.set('Enter',     42);
+keyMap.set(' ',         42);
+keyMap.set('ArrowRight',41);
+keyMap.set('ArrowLeft', 40);
+keyMap.set('ArrowUp',   38);
+keyMap.set('ArrowDown', 39);
+keyMap.set('M',          8); // mute
+keyMap.set('g',         35); // guide
+keyMap.set('s',         64); // sat
+keyMap.set('f',         63); // fav
+keyMap.set('i',         46); // info
+keyMap.set('x',         36); // exit
+keyMap.set('p',          1); // power
+keyMap.set('m',         33); // menu
+keyMap.set('PageUp',    44);
+keyMap.set('PageDown',  43);
+keyMap.set('R',  74);
+keyMap.set('G',  75);
+keyMap.set('Y',  76);
+keyMap.set('B',  77);
+
+
+function handleKey(event) {
+    //console.log('KBD detected:', event.key);
+
+    // if the key is a Tab, toggle remote
+    if (event.key === 'Tab') {
+        toggleRemoteAndControls();
+        event.preventDefault(); // Prevent default tab behavior
+        return;
+    }
+
+    const name = 'fromKBD_'+event.keyCode ;
+    if (keyMap.has(event.key)) {
+        event.preventDefault();
+        const value = keyMap.get(event.key);
+        sendCode(name, value);
+    }
+};
+
+document.body.addEventListener('keydown', handleKey);
 
 
 </script>

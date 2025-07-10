@@ -10,10 +10,7 @@ This assumes you already have the original Slinger installed and working.
 ## Installation
 
 
-
-Please install the original Slinger software first, especially the `config.ini file.
-
-### Prerequisites
+Please follow the original Slinger instructions, prepare the `config.ini file.
 
 You need ffmpeg and ffmpeg-python (*not* python-ffmpeg!)
 
@@ -26,4 +23,8 @@ On Fedora:
     sudo dnf install python3-ffmpeg-python
 
 
+This should be a drop-in replacement and by default, it should work in the same way.
 
+The web player is in the file webplay.html, make sure it is in the same directory as the slingbox-server.py.
+
+Now, point your web browser to http://localhost:8080/webplay.html

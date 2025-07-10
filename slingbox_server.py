@@ -1259,6 +1259,8 @@ def ConnectionManager(config_fn):
                         if 'remux' in parsed_qs:
                             do_remux = parsed_qs['remux'][0].strip().lower() in ('yes', 'true', '1')
                             del parsed_qs['remux']
+                        if 'dummy' in parsed_qs:
+                            del parsed_qs['dummy']
                     if parsed_qs:
                         # for backward compatibility, anything can be a key, and the value is the channel number
                         arbitrary_key = list(parsed_qs.keys())[0]
@@ -1370,7 +1372,8 @@ def BroadcastResponder():
 
 def killmyself():
     print('Shutting Down')
-    os._exit(100)
+    os.exit()
+    #os._exit(100)
 
 def parse_buttons(buttons, lineno):
     lines = buttons.split('\n')
@@ -1432,73 +1435,405 @@ def BuildPage(cp, section_name):
 '''
     default_style='''style=
 .button {
-  border: none;
-  color: white;
-  background-color: blue;
-  padding: 0px 20px;
+  box-shadow: 0.5em 0.5em 1em 0px #222;
+  background:linear-gradient(to bottom, #999 5%, #222 100%);
+  background-color:#555;
+  border-radius:1.25em 1.25em 1.25em 1.25em;
+  min-width: 2.5em;
+  max-width: 6.5em;
+  height: 2.5em;
+  border:1px solid #999;
+  display:block;
+  margin: auto;
+  margin-top: 0.4ex;
+  margin-bottom: 0.4ex;
+  cursor:pointer;
+  color:white;
+  font-family:sans;
+  font-weight:bold;
+  text-decoration:none;
+  text-shadow:0px 1px 0px #58c;
   text-align: center;
-  text-decoration: none;
-  display: inline-block;
-  font-size: 70px;
-  margin: 4px 2px;
-  cursor: pointer;
+  display: inline;
 }
 
-.round {
-  border: none;
-  color: white;
+
+'''
+    default_remote_html = '''<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Default Remote</title>
+
+<style>
+
+body {
+ margin: 0;
+}
+
+.container {
+  display: flex;
+  flex-wrap: wrap;
+  flex-direction: column;
+  height: 100vh;
+  align-content: flex-start;
+  column-gap: 0.5em;
+  margin-left: 1em;
+}
+
+.statusline {
+  position: absolute;
+  bottom: 1ex;
+  font-family:sans;
+  font-size: smaller;
+}
+
+.button {
+  box-shadow: 0.5em 0.5em 1em 0px #222;
+  background:linear-gradient(to bottom, #999 5%, #222 100%);
+  background-color:#555;
+  border-radius:1.25em 1.25em 1.25em 1.25em;
+  min-width: 2.5em;
+  max-width: 4.5em;
+  height: 2.5em;
+  border:1px solid #999;
+  display:block;
+  margin: auto;
+  margin-top: 0.4ex;
+  margin-bottom: 0.4ex;
+  cursor:pointer;
+  color:white;
+  font-family:sans;
+  font-weight:bold;
+  text-decoration:none;
+  text-shadow:0px 1px 0px #58c;
+  text-align: center;
+}
+
+.wide {
+  min-width: 4.5em;
+  max-width: 4.5em;
+  width: 4.5em;
+}
+
+.buttonred {
+  background:linear-gradient(to bottom, red 5%, #600 100%);
+  background-color: red;
+}
+
+.buttongreen {
+  background:linear-gradient(to bottom, green 5%, #030 100%);
   background-color: green;
-  padding: 0px 20px;
-  text-align: center;
-  text-decoration: none;
-  display: inline-block;
-  font-size: 70px;
-  margin: 4px 2px;
- cursor: pointer;
-  border-radius: 50%;
 }
-  
-.text {
-  border: none;
-  color: black;
-  background-color: lightblue;
-  text-align: center;
-  text-decoration: none;
-  display: inline-block;
-  font-size: 60px;
-  margin: 4px 2px;
-  cursor: pointer;
-}'''
 
-    default_buttons='''buttons='1' : 9 : round
+.buttonyellow {
+  background:linear-gradient(to bottom, yellow 5%, #505 100%);
+  background-color: yellow;
+}
+
+.buttonblue {
+  background:linear-gradient(to bottom, blue 5%, #006 100%);
+  background-color: blue;
+}
+
+.bigbutton {
+  width: 4em;
+  height: 4em;
+  border-radius:2em;
+}
+
+.disabled {
+  background:linear-gradient(to bottom, #ddd 5%, #888 100%);
+  background-color:#ddd;
+  display: none;
+}
+
+.button:hover {
+  background:linear-gradient(to bottom, #222 5%, #999 100%);
+  background-color:#222;
+}
+
+.button:active {
+  position:relative;
+  top:1px;
+}
+
+table {
+  margin-left:auto;
+  margin-right: auto;
+  margin-top: 1ex;
+  margin-bottom: 1ex;
+  border-collapse:collapse;
+  background-color:#bbb;
+  border-radius:0.5em;
+}
+
+.squeeze {
+  transform: scaleX(0.7);
+}
+
+.hidden {
+  display: none;
+}
+
+#ir {
+  color: white;
+  padding-left: 1em;
+  padding-right: 0.5em;
+  display: inline-block;
+}
+
+</style>
+</head>
+
+<body>
+
+<form id="remoteform" class="container" method='post' action='#'>
+
+<input class="hidden" type="submit" name="dummy" >
+
+<table>
+  <tr>
+  <td><button class="button buttonred" type="submit" value="1"  name="power" >⦿</button></td>
+  <td><button class="button squeeze" type="submit" value="8" name="mute"             >MUTE</button></td>
+  <td><span id="ir">⇈ </span></td><!-- to signal IR code is being sent -->
+  </tr>
+</table>
+
+
+<table>
+  <tr>
+  <td><button class="button wide" style="margin-right: -2em" type="submit" value="33" name="menu" >MENU</button></td>
+  <td></td>
+  <td><button class="button" style="border-radius: 1.25em 1.25em 0 0"  type="submit" value="38" name="up"   >↑</button></td>
+  <td></td>
+  <td><button class="button wide" style="margin-left: -2em" type="submit" value="36" name="exit" >EXIT</button></td>
+  </tr>
+  <tr>
+  <td></td>
+  <td><button class="button" style="border-radius: 1.25em 0 0 1.25em" type="submit" value="40" name="left"  >←</button></td>
+  <td><button class="button bigbutton"  type="submit" value="42" name="sel"   >OK</button></td>
+  <td><button class="button" style="border-radius: 0 1.25em 1.25em 0"  type="submit" value="41" name="right" >→</button></td>
+  <td></td>
+  </tr>
+  <tr>
+  <td><button class="button wide" style="margin-right: -2em" type="submit" value="21" name="last"  >()</button></td>
+  <td></td>
+  <td><button class="button" style="border-radius: 0 0 1.25em 1.25em" type="submit" value="39" name="down"  >↓</button></td>
+  <td></td>
+  <td><button class="button wide" style="margin-left: -2em" type="submit" value="35" name="guide" >EPG</button></td>
+</table>
+
+<table>
+  <tr>
+  <td><button class="button"  type="submit" value="6" name="volup" >V+</button></td>
+  <td><button class="button wide"  type="submit" value="46" name="info"  >INFO</button></td>
+  <td><button class="button"  type="submit" value="4"  name="chup"  >P+</button></td>
+  </tr>
+  <tr>
+  <td><button class="button"  type="submit" value="7" name="voldown"   >V−</button></td>
+  <td><button class="button wide"  type="submit" value="63" name="FAV" >FAV</button></td>
+  <td><button class="button"  type="submit" value="5"  name="chdown"   >P−</button></td>
+  </tr>
+</table>
+
+<table>
+  <tr>
+  <td><input class="text" type="text" name="Digits" id="Digits" placeholder="channel" maxlength="4" size="4" value=""><input type="submit" value="↲" ></td>
+  </tr>
+</table>
+
+<table>
+  <tr>
+  <td><button class="button"  type="submit" value="9" name="one"    >1</button></td>
+  <td><button class="button"  type="submit" value="10" name="two"   >2</button></td>
+  <td><button class="button"  type="submit" value="11" name="three" >3</button></td>
+  </tr>
+  <tr>
+  <td><button class="button"  type="submit" value="12" name="four"  >4</button></td>
+  <td><button class="button"  type="submit" value="13" name="five"  >5</button></td>
+  <td><button class="button"  type="submit" value="14" name="six"   >6</button></td>
+  </tr>
+  <tr>
+  <td><button class="button"  type="submit" value="15" name="seven" >7</button></td>
+  <td><button class="button"  type="submit" value="16" name="eight" >8</button></td>
+  <td><button class="button"  type="submit" value="17" name="nine"  >9</button></td>
+  </tr>
+  <tr>
+  <td><button class="button"  type="submit" value="44" name="pgup"   >Pg+</button></td>
+  <td><button class="button"  type="submit" value="18" name="zero"   >0</button></td>
+  <td><button class="button"  type="submit" value="43" name="pgdown" >Pg−</button></td>
+  </tr>
+</table>
+
+<table>
+  <tr>
+  <td><button class="button buttonred"  type="submit" value="74" name="red"      >R</button></td>
+  <td><button class="button buttongreen" type="submit" value="75" name="green"   >G</button></td>
+  <td><button class="button buttonyellow" type="submit" value="76" name="yellow" >Y</button></td>
+  <td><button class="button buttonblue" type="submit" value="77" name="blue"     >B</button></td>
+  </tr>
+</table>
+
+
+<table>
+  <tr>
+  <td><button class="button" type="submit" value="26" name="pause"    >II</button></td>
+  <td><button class="button"  type="submit" value="27" name="rewind"  >«</button></td>
+  <td><button class="button"  type="submit" value="28" name="forward" >»</button></td>
+  </tr>
+  <tr>
+  <td><button class="button" style="color:red" type="submit" value="29" name="record" >●</button></td>
+  <td><button class="button"  type="submit" value="24" name="play" >▶</button></td>
+  <td><button class="button"  type="submit" value="25" name="stop" >■</button></td>
+  </tr>
+</table>
+
+<table>
+  <tr>
+  <td><button class="button wide squeeze" type="submit" value="64" name="sat"     >SAT</button></td>
+  <td><button class="button wide squeeze" type="submit" value="71" name="sub"     >SUB</button></td>
+  <td><button class="button wide squeeze" type="submit" value="69" name="tvradio" >TV/R</button></td>
+  </tr>
+</table>
+
+<table>
+  <tr>
+  <td><button class="button"  type="submit" value="65" name="search" >🔍</button></td>
+  <td><button class="button"  type="submit" value="62" name="audio"  >A/B</button></td>
+  <td><button class="button"  type="submit" value="66" name="txt"    >TXT</button></td>
+  </tr>
+</table>
+
+<table>
+  <tr>
+  <td><button class="button" style="color:red" type="submit" value="-1" name="killmyself" >☠</button></td>
+  </tr>
+</table>
+
+
+<script>
+
+const irFlash = [
+  { color: "red" },
+  { color: "white" },
+];
+
+const irFlashTiming = {
+  duration: 100,
+  iterations: 1,
+};
+
+function sendCode(buttonName, buttonValue) {
+    const dataString = encodeURIComponent(buttonName) + '=' + encodeURIComponent(buttonValue);
+    const xhr = new XMLHttpRequest(); // Create XHR object
+    xhr.open('POST', ''); // Set request method and URL
+    xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+    xhr.onload = () => {
+      if (xhr.status === 200) {
+        // console.log('Button code submitted successfully:', buttonName, buttonValue);
+        document.getElementById('ir').animate(irFlash, irFlashTiming);
+      } else {
+        console.error('Error submitting:', xhr.statusText);
+      }
+    };
+    xhr.send(dataString);
+}
+
+function addButtonListeners(buttons) {
+    for (let submitButton of buttons)  {
+        submitButton.addEventListener('click', (event) => {
+            event.preventDefault();
+            const buttonName = submitButton.getAttribute('name');
+            const buttonValue = submitButton.getAttribute('value');
+            sendCode(buttonName, buttonValue);
+        });
+    }
+}
+
+
+/* create a table of all possible keycodes */
+var isFilled = false;
+
+function autoFill () {
+    if (isFilled) {
+      return;
+    }
+    let table = document.getElementById('autofill');
+    for (let row = 0; row <= 8; row++) {
+        let rowNode = document.createElement('tr');
+        for (let column = 0; column <= 9; column++) {
+            let cellNode = document.createElement('td');
+            let buttonNode = document.createElement('button');
+            let code = 10*row+column;
+            if (code > 81) {
+                break;
+            }
+            buttonNode.textContent = code;
+            buttonNode.setAttribute('name', `C${code}`);
+            buttonNode.setAttribute('value', code);
+            buttonNode.classList.add('button');
+            cellNode.appendChild(buttonNode);
+            rowNode.appendChild(cellNode);
+            addButtonListeners([buttonNode]);
+        }
+        table.appendChild(rowNode);
+    }
+    isFilled = true;
+}
+
+const submitButtons = document.querySelectorAll('button[type="submit"]');
+addButtonListeners(submitButtons);
+</script>
+
+
+<details ontoggle="autoFill()">
+<summary>codes</summary>
+<table id="autofill">
+</table>
+</details>
+
+<div class="statusline">Status:%s</div>
+
+</form>
+</body>
+</html>
+
+'''
+    default_buttons='''
+        buttons=
+        '7' : 15
         :&nbsp;&nbsp;
-        '2' : 10 : round
+        '8' : 16
+        :&nbsp;&nbsp;
+        '9' : 17
+        :&nbsp;&nbsp;
+        :<br>
+        '4' : 12
+        :&nbsp;&nbsp;
+        '5' : 13
+        :&nbsp;&nbsp;
+        '6' : 14
+        :&nbsp;&nbsp;
+        :<br>
+        '1' : 9
+        :&nbsp;&nbsp;
+        '2' : 10
          :&nbsp;&nbsp;
-        '3' : 11 : round
+        '3' : 11
         :&nbsp;&nbsp;
-        '4' : 12 : round
-         :&nbsp;&nbsp;
-        '5' : 13 : round
-        :&nbsp;&nbsp;
-        '6' : 14 : round
-         :&nbsp;&nbsp;
-        '7' : 15 : round
-        :&nbsp;&nbsp;
-        '8' : 16 : round
-        :&nbsp;&nbsp;
-        '9' : 17 : round
-        :&nbsp;&nbsp;
-        '0' : 18 : round
+        :<br>
+        '0' : 18
         :<br><br>
         'OK' : 42
          :&nbsp;&nbsp;
-        'Up' : 38
+        '↑' : 38
         :&nbsp;&nbsp;
-        'Down' : 39
+        '↓' : 39
         :&nbsp;&nbsp;
-        'Left' : 40
+        '←' : 40
         :&nbsp;&nbsp;
-        'Right': 41
+        '→': 41
         :<br><br>
         :&nbsp;&nbsp;
         'Guide' : 35
@@ -1541,7 +1876,7 @@ def BuildPage(cp, section_name):
         'Channel': Channel
         :&nbsp;&nbsp;'''
 
-    data = default_style + default_buttons
+    data = default_remote_html
 #    print(section_name)
     remoteinfo = cp[section_name]
     rccode = remoteinfo.get('code', '')
@@ -1580,7 +1915,7 @@ def BuildPage(cp, section_name):
     else:
         print('Using built in default remote page definition.')
 
-    if fn.lower().endswith('.html') :
+    if fn.lower().endswith('.html') or fn=='':
         page = data
         cmds = parse_html(page)
     else:
@@ -1601,9 +1936,9 @@ def BuildPage(cp, section_name):
                 try: btn_class = data.split(':')[1].strip()
                 except: btn_class = 'button'
  #               <button class=round type="submit" name="1" value="9 : round"
-                formstr = formstr + '<button class=%s type="submit" name="%s" value="%s">%s</button>' % (btn_class, key, str(data).split(':')[0].strip(), key)
+                formstr = formstr + '<button class="%s" type="submit" name="%s" value="%s">%s</button>' % (btn_class, key, str(data).split(':')[0].strip(), key)
                 if 'Channel' == data:
-                    formstr = formstr + '<input class=text type="text" name="Digits" maxlength="4" size="4" id="" value=""></input>'
+                    formstr = formstr + '<input class="text" type="text" name="Digits" maxlength="4" size="4" id="" value=""></input>'
         if section_name == 'REMOTE':
             uri = ''
         else: 

@@ -14,6 +14,7 @@ class Mp4Rewrapper:
             .input('pipe:0')
             .output('pipe:1',
                     format='mp4',
+                    pix_fmt='yuv420p',
                     vcodec='copy',
                     acodec='copy',
                     # these two options are not present in older ffmpeg
