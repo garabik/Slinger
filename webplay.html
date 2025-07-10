@@ -126,15 +126,23 @@ html, body {
 <script>
 
 function bodyLoad() {
+    var slingbox_id = 'slingbox';
     video_random_id = Math.round(Math.random() * 1000000);
     console.log("body loaded, video id: " + video_random_id);
+    const queryString = window.location.search;
+    console.log("QS "+queryString);
+    const urlParams = new URLSearchParams(queryString);
+    if (urlParams.has('slingbox_id')) {
+        slingbox_id = urlParams.get('slingbox_id');
+    };
     video = document.getElementById('video');
-    video.src = '/slingbox?remux=1&dummy=' + video_random_id;
+    video.src = "/"+slingbox_id+"?remux=1&dummy=" + video_random_id;
+
 };
 
 function reloadPage() {
     console.log("Reloading page");
-    location.reload();
+    window.location.reload();
 };
 
 function videoPlay() {

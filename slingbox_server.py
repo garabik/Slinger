@@ -200,7 +200,7 @@ def find_max_buffer_size( opt ):
     return size         
         
 
-def sure_sendall(sock, data, timeout=1):
+def sure_sendall(sock, data, timeout=30):
     # Ensure that all data is sent, even if the socket is non-blocking and raises an Exception
 
     end_time = time.time() + timeout
@@ -1233,8 +1233,8 @@ def ConnectionManager(config_fn):
                 data = connection.recv(1024).decode("utf-8")
                 data_lower = data.lower()
                 data_1stline_lower = data_lower.split('\n',1)[0].strip().lower()
-                print('DATA ', data);
-                print('1stline', data_1stline_lower)
+#                print('DATA ', data);
+#                print('1stline', data_1stline_lower)
             except:
  #               print('bad data')
                 data = 'Bad Request' 
