@@ -125,6 +125,75 @@ html, body {
 
 <script>
 
+// function to display pop up message for one second
+function popup(message) {
+    const player = document.getElementById('player');
+    const popup = document.createElement('div');
+    popup.textContent = message;
+    popup.style.position = 'fixed';
+    popup.style.fontFamily = 'monospace';
+    popup.style.fontSize = '3em';
+    popup.style.textShadow = '0.1em 0.1em 0.2em black';
+    popup.style.bottom = '20%';
+    popup.style.left = '50%';
+    popup.style.transform = 'translateX(-50%)';
+    popup.style.color = 'white';
+    popup.style.zIndex = '100';
+    player.appendChild(popup);
+
+    setTimeout(() => {
+        player.removeChild(popup);
+    }, 500);
+}
+
+// stolen from https://stackoverflow.com/questions/62823062/adding-a-simple-left-right-swipe-gesture
+function registerTouchEvent(element, callback) {
+  const THRESHOLD = 50 // Minimum difference in pixels at which a swipe gesture is detected
+
+  let startEvent
+  element.addEventListener('touchstart', ev => startEvent = ev)
+
+  element.addEventListener('touchend', endEvent => {
+    if (!startEvent.changedTouches || !endEvent.changedTouches) return
+
+    const start = startEvent.changedTouches[0]
+    const end = endEvent.changedTouches[0]
+    if (!start || !end) return
+
+    const horizontalDifference = start.screenX - end.screenX
+    const verticalDifference = start.screenY - end.screenY
+    const horizontal = Math.abs(horizontalDifference) > Math.abs(verticalDifference) && Math.abs(verticalDifference) < THRESHOLD
+    const vertical = !horizontal && Math.abs(horizontalDifference) < THRESHOLD
+
+    let direction = 'diagonal';
+    if (horizontal) direction = horizontalDifference >= THRESHOLD ? 'left' : (horizontalDifference <= -THRESHOLD ? 'right' : 'click')
+    if (vertical) direction = verticalDifference >= THRESHOLD ? 'up' : (verticalDifference <= -THRESHOLD ? 'down' : 'click')
+
+    callback(direction, startEvent, endEvent)
+  })
+}
+
+function sizeRemote() {
+    var fr = document.getElementById("remoteframe");
+    var r_el = document.getElementById("remote");
+    if(fr.contentDocument) {
+        r_el.width = fr.contentDocument.documentElement.scrollWidth+30; //FF 3.0.11, Opera 9.63, and Chrome
+    } else {
+        r_el.width = fr.contentWindow.document.body.scrollWidth+30; //IE6, IE7 and Chrome
+    }
+}
+
+function swipeHandler(direction, startEvent, endEvent) {
+    console.log("Swipe detected: " + direction);
+    if (direction === 'up' || direction === 'right') {
+        sendCode('fromSwipe_up', 38); // ArrowUp
+    } else if (direction === 'down' || direction === 'left') {
+        sendCode('fromSwipe_down', 39); // ArrowDown
+//    } else if (direction === 'click') {
+//        toggleRemoteAndControls();
+    }
+}
+
 function bodyLoad() {
     var slingbox_id = 'slingbox';
     video_random_id = Math.round(Math.random() * 1000000);
@@ -137,11 +206,14 @@ function bodyLoad() {
     };
     video = document.getElementById('video');
     video.src = "/"+slingbox_id+"?remux=1&dummy=" + video_random_id;
-
+    sizeRemote(); // Set remote size
+    videowrap = document.getElementById('videowrap');
+    registerTouchEvent(videowrap, swipeHandler);
 };
 
 function reloadPage() {
     console.log("Reloading page");
+    popup("Reloading");
     window.location.reload();
 };
 
@@ -151,6 +223,7 @@ function videoPlay() {
 };
 
 function toggleRemote() {
+    popup("Toggle remote");
     var remoteDiv = document.getElementById('remote');
     if (remoteDiv.style.display === 'none' || remoteDiv.style.display === '') {
         remoteDiv.style.display = 'block'; // Show the remote and controls
@@ -175,6 +248,7 @@ function toggleRemoteAndControls() {
 }
 
 function toggleMute() {
+    popup("Toggle mute");
     var video = document.getElementById('video');
     if (video.muted) {
         video.muted = false;
@@ -210,13 +284,13 @@ function videoFill() {
 };
 
 function toggleFullscreen() {
-    var videowrap = document.getElementById('player');
-    console.log(`Toggling fullscreen for videowrap: ${videowrap}`);
+    popup("fullscreen");
+    var player = document.getElementById('player');
     if (document.fullscreenElement) {
         document.exitFullscreen();
     } else {
-        videowrap.requestFullscreen = videowrap.requestFullscreen || videowrap.webkitRequestFullscreen || videowrap.mozRequestFullScreen || videowrap.msRequestFullscreen;
-        videowrap.requestFullscreen().catch(err => {
+        player.requestFullscreen = player.requestFullscreen || player.webkitRequestFullscreen || player.mozRequestFullScreen || player.msRequestFullscreen;
+        player.requestFullscreen().catch(err => {
             console.error(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
         });
     };
@@ -241,6 +315,7 @@ function windowResize() {
 // if there is an error playing the video, sleep 1 sec and try again
 document.getElementById('video').addEventListener('error', function() {
     //alert('Error playing video, retrying in 1 second...');
+    popup('Error playing, retrying...');
     setTimeout(function() {
       //  document.getElementById('video').load();
         document.getElementById('video').play()
@@ -259,6 +334,7 @@ const irFlashTiming = {
 
 
 function sendCode(buttonName, buttonValue) {
+    popup('IR '+buttonValue);
     const dataString = encodeURIComponent(buttonName) + '=' + encodeURIComponent(buttonValue);
     const xhr = new XMLHttpRequest(); // Create XHR object
     xhr.open('POST', ''); // Set request method and URL
@@ -278,6 +354,7 @@ function sendCode(buttonName, buttonValue) {
             }
       } else {
         console.error('Error submitting:', xhr.statusText);
+        popup('IR control err');
       }
     };
     xhr.send(dataString);
