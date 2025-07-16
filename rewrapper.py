@@ -11,17 +11,19 @@ class Mp4Rewrapper:
         print('*** Initializing mp4 remuxer')
         self.proc = (
             ffmpeg
-            .input('pipe:0')
-            .output('pipe:1',
+            .input('pipe:0',
+                   format="asf")
+           .output('pipe:1',
                     format='mp4',
                     pix_fmt='yuv420p',
+                    sample_fmt='fltp',
                     vcodec='copy',
                     acodec='copy',
-                    # these two options are not present in older ffmpeg
+                    # these two options are not present in older ffmpeg versions
                     # drop_pkts_on_overflow=True,
                     # attempt_recovery=True,
-                    #fflags='nobuffer+genpts+discardcorrupt+flush_packets',
-                    fflags='nobuffer+discardcorrupt+flush_packets',
+                    fflags='nobuffer+genpts+discardcorrupt+flush_packets',
+                    #fflags='nobuffer+discardcorrupt+flush_packets',
                     flags='+global_header',
                     probesize=32,
                     frag_duration = 200000,  # 0.2 sec

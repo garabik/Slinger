@@ -496,7 +496,6 @@ def streamer(maxstreams, config_fn, section_name, box_name, streamer_q, server_p
 
         print(name,'Stream started at', ts(), len(stream_header), len(first_buffer[h264_header_pos:]))
         stream_header_remuxed = remux_video_stream(mp4wrapper, stream_header)
-        print('header remuxed', len(stream_header_remuxed))
         print('streams:', streams)
         for s in streams :
             do_remux = remux_connections.get(s, False)
@@ -504,7 +503,6 @@ def streamer(maxstreams, config_fn, section_name, box_name, streamer_q, server_p
                 # this does not work, stream_header_remuxed is most likely empty, because remux_video_stream did not yet return any data
                 if do_remux:
                     if stream_header_remuxed:
-                        print('sendall remuxed header')
                         s.sendall(stream_header_remuxed)
                 else:
                     if stream_header:
@@ -923,7 +921,7 @@ def streamer(maxstreams, config_fn, section_name, box_name, streamer_q, server_p
                 pc += 1
 
                 msg_remuxed = remux_video_stream(mp4wrapper, msg)
-                if len(stream_header_remuxed) == 0: # ugly hack to give other players at least some initial data
+                if len(stream_header_remuxed) == 0: # ugly hack to give other players at least some initial data, but it does not work anyway
                     stream_header_remuxed = msg_remuxed
                 for stream_socket in streams:
                     do_remux = remux_connections.get(stream_socket, False)
@@ -940,6 +938,12 @@ def streamer(maxstreams, config_fn, section_name, box_name, streamer_q, server_p
                             print(traceback.print_exc())
                             print('closing stream')
                             close_streaming_connection(stream_socket)
+                            if do_remux:
+                                # terminate all the streams, to give ffmpeg a chance to restart
+                                # this is an ugly hack
+                                stream_header_remuxed = b''
+                                print(name, 'Shutting down connections to restart ffmpeg')
+                                for s in streams : close_streaming_connection(s)
                         else:
                             print(ts(), name, 'Stream Terminated', e, traceback.print_exc())
                             streams.remove(stream_socket)
@@ -967,9 +971,13 @@ def streamer(maxstreams, config_fn, section_name, box_name, streamer_q, server_p
 #                            new_stream.sendall(OK)
                             sure_sendall(new_stream, OK)
                             stream_clients[new_stream], channel = parse_stream(data)
-                            if stream_header_remuxed:
+                            do_remux = remux_connections.get(new_stream, False)
+                            if do_remux and stream_header_remuxed:
                                 print('sending remuxed header')
                                 sure_sendall(new_stream, stream_header_remuxed)
+                            elif stream_header:
+                                print('sending header')
+                                sure_sendall(new_stream, stream_header)
                             print( name, 'New Stream Starting', channel)
                             if channel != '0':
                                 if not RemoteLock : StartChannel = channel
@@ -1283,6 +1291,11 @@ def ConnectionManager(config_fn):
                     print('STREAM=%s:%d:%s' % (client_address[0], client_address[1], channel))
                     streamer_q = streamer_qs[streamer_name]
                     streamer_q.put( bytearray(1) + bytes('STREAM=%s:%d:%s' % (client_address[0], client_address[1], channel), 'utf-8'))
+                    # there can be only one remuxed connection
+                    for s, s_remux in list(remux_connections.items()):
+                        if s_remux:
+                            closeconn(s)
+                            del remux_connections[s]
                     remux_connections[connection] = do_remux
                     streamer_q.put(connection)
                 else:

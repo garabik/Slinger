@@ -25,6 +25,35 @@ On Fedora:
 
 This should be a drop-in replacement and by default, it should work in the same way.
 
-The web player is in the file webplay.html, make sure it is in the same directory as the slingbox-server.py.
+The web player is in the file webplay.html, make sure it is in the same directory as the slingbox-server.py, and you need a python moddule rewrap.py (in the same directory).
 
-Now, point your web browser to http://localhost:8080/webplay.html
+
+## Usage
+
+To connect to the Slinger server, point your web browser to http://localhost:8080/webplay.html.
+
+If you use multiple slingbox setup (in your config.ini), use http://localhost:8080/webplay.html?slingbox_id=nameofyourslingbox
+
+Clicking on the video (even if not playing) will toggle remote control and video controls (the ugly buttons at the bottom).
+So will pressing the TAB key.
+
+Double click will toggle fullscreen mode.
+
+The remote can be controlled by a keyboard, using the following keys:
+
+ * digits 0-9
+ * Enter or Space - select (OK)
+ * Arrow keys
+ * M - mute (remote)
+ * g - EPG
+ * s - satellite
+ * f - favorite group
+ * i - info
+ * x - exit
+ * p - power on/off
+ * m - menu
+ * PageUp, PageDown
+ * R, G, B, Y (capital letters, with Shift) - red, green, blue, yellow buttons on the remote
+
+These keys
+
