@@ -55,5 +55,9 @@ The remote can be controlled by a keyboard, using the following keys:
  * PageUp, PageDown
  * R, G, B, Y (capital letters, with Shift) - red, green, blue, yellow buttons on the remote
 
-These keys
+These keys should be somewhat sensible for a range of remotes, if you need to change them, edit the keyMap.set definitions at the top of `webplay.html`.
+
+For touchscreen devices, swiping your finger up/down sends the up/down events (i.e. switch channels); because on some mobile browsers, swiping down reloads the page, you can also swipe left/right to switch channels.
+
+Dragging your finger along the right border will change the volume.
 

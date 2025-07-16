@@ -5,6 +5,43 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>Slinger WebPlay</title>
+    <script>
+// control the remote with your keyboard
+const keyMap = new Map();
+
+// event.key, slingbox keycode
+keyMap.set('0',         18);
+keyMap.set('1',          9);
+keyMap.set('2',         10);
+keyMap.set('3',         11);
+keyMap.set('4',         12);
+keyMap.set('5',         13);
+keyMap.set('6',         14);
+keyMap.set('7',         15);
+keyMap.set('8',         16);
+keyMap.set('9',         17);
+keyMap.set('Enter',     42);
+keyMap.set(' ',         42);
+keyMap.set('ArrowRight',41);
+keyMap.set('ArrowLeft', 40);
+keyMap.set('ArrowUp',   38);
+keyMap.set('ArrowDown', 39);
+keyMap.set('M',          8); // mute
+keyMap.set('g',         35); // guide
+keyMap.set('s',         64); // sat
+keyMap.set('f',         63); // fav
+keyMap.set('i',         46); // info
+keyMap.set('x',         36); // exit
+keyMap.set('p',          1); // power
+keyMap.set('m',         33); // menu
+keyMap.set('PageUp',    44);
+keyMap.set('PageDown',  43);
+keyMap.set('R',  74);
+keyMap.set('G',  75);
+keyMap.set('Y',  76);
+keyMap.set('B',  77);
+    </script>
+
     <style>
 
 html, body {
@@ -120,10 +157,7 @@ html, body {
   </div> <!-- videowrap -->
 </div> <!-- player -->
 
-<!-- script src="webplay-mse.js"></script --> 
-
 <script>
-
 // function to display pop up message for a short time
 function popup(message) {
     const player = document.getElementById('player');
@@ -184,6 +218,10 @@ function sizeRemote() {
 
 function swipeHandler(direction, startEvent, endEvent) {
     console.log("Swipe detected: " + direction);
+    if (isDragging) {
+        console.log("Dragging detected, ignoring swipe");
+        return; // Ignore swipes while dragging
+    }
     if (direction === 'up' || direction === 'right') {
         sendCode('fromSwipe_up', 38); // ArrowUp
     } else if (direction === 'down' || direction === 'left') {
@@ -213,7 +251,7 @@ function bodyLoad() {
     var isDragging = false;
     document.addEventListener('touchstart', (e) => {
         const touchX = e.touches[0].clientX;
-        if (touchX > window.innerWidth * 0.9) {
+        if (touchX > window.innerWidth - 30) {
             isDragging = true;
         }
     });
@@ -382,41 +420,6 @@ function sendCode(buttonName, buttonValue) {
 }
 
 
-// control the remote with your keyboard
-const keyMap = new Map();
-
-// event.key, slingbox keycode
-keyMap.set('0',         18);
-keyMap.set('1',          9);
-keyMap.set('2',         10);
-keyMap.set('3',         11);
-keyMap.set('4',         12);
-keyMap.set('5',         13);
-keyMap.set('6',         14);
-keyMap.set('7',         15);
-keyMap.set('8',         16);
-keyMap.set('9',         17);
-keyMap.set('Enter',     42);
-keyMap.set(' ',         42);
-keyMap.set('ArrowRight',41);
-keyMap.set('ArrowLeft', 40);
-keyMap.set('ArrowUp',   38);
-keyMap.set('ArrowDown', 39);
-keyMap.set('M',          8); // mute
-keyMap.set('g',         35); // guide
-keyMap.set('s',         64); // sat
-keyMap.set('f',         63); // fav
-keyMap.set('i',         46); // info
-keyMap.set('x',         36); // exit
-keyMap.set('p',          1); // power
-keyMap.set('m',         33); // menu
-keyMap.set('PageUp',    44);
-keyMap.set('PageDown',  43);
-keyMap.set('R',  74);
-keyMap.set('G',  75);
-keyMap.set('Y',  76);
-keyMap.set('B',  77);
-
 
 function handleKey(event) {
     //console.log('KBD detected:', event.key);
@@ -440,6 +443,7 @@ document.body.addEventListener('keydown', handleKey);
 
 
 </script>
+
 
 </body>
 </html>
