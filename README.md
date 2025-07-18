@@ -1,4 +1,4 @@
-# Slinger
+# Slinger web player
 
 This is a forked version of the original Slinger, software that allows you to connect to Slingboxes. For details, please refer to the original README-original.md documentation.
 
@@ -22,22 +22,26 @@ On Debian, you can install them using following commands:
 On Fedora:
     sudo dnf install python3-ffmpeg-python
 
+On Android + Termux:
+    pkg install ffmpeg
+    pip install --break-system-packages ffmpeg-python
 
 This should be a drop-in replacement and by default, it should work in the same way.
 
-The web player is in the file webplay.html, make sure it is in the same directory as the slingbox-server.py, and you need a python moddule rewrap.py (in the same directory).
+The web player is in the file webplay.html, make sure it is in the same directory as the slingbox_server.py, and you need a python moddule rewrap.py (in the same directory).
 
 
 ## Usage
 
-To connect to the Slinger server, point your web browser to http://localhost:8080/webplay.html.
+To connect to the Slinger server, point your web browser to http://localhost:8080/webplay.html (as usual, replace `localhost` and `8080` with your configured values, if different).
 
-If you use multiple slingbox setup (in your config.ini), use http://localhost:8080/webplay.html?slingbox_id=nameofyourslingbox
+If you use multiple slingbox setup (in your config.ini), use http://localhost:8080/webplay.html?slingbox_id=nameofyourslingbox.
 
-Clicking on the video (even if not playing) will toggle remote control and video controls (the ugly buttons at the bottom).
-So will pressing the TAB key.
+Clicking on the video (even if not playing) will toggle remote control and video controls (the ugly buttons at the bottom). This can be toggled also by the TAB key on the keyboard.
 
 Double click will toggle fullscreen mode.
+
+Since video autoplay is finicky, you have to start it manually with the Play button (in the ugly control area at the bottom). This will take a while (watch the slingbox_server.py output for any problems, especially the first time). Clicking Play again will pause the video, and clicking it once more will resume playing. Note that this will increase the remote control lag accordingly. To go back to live streaming, click on the Stop button and then again on the Play/pause one. If you encounter problems (disconnect etc.), repeat the Stop and Play sequence.
 
 The remote can be controlled by a keyboard, using the following keys:
 
@@ -55,9 +59,42 @@ The remote can be controlled by a keyboard, using the following keys:
  * PageUp, PageDown
  * R, G, B, Y (capital letters, with Shift) - red, green, blue, yellow buttons on the remote
 
-These keys should be somewhat sensible for a range of remotes, if you need to change them, edit the keyMap.set definitions at the top of `webplay.html`.
+These keys follow my remote, but they should be somewhat sensible for a range of remote types. If you need to change them, edit the keyMap.set definitions at the top of `webplay.html`.
 
-For touchscreen devices, swiping your finger up/down sends the up/down events (i.e. switch channels); because on some mobile browsers, swiping down reloads the page, you can also swipe left/right to switch channels.
+For touchscreen devices, swiping your finger up/down sends the up/down events (i.e. switch channels). Because on some mobile browsers swiping down reloads the page, you can also (somewhat confusingly) swipe left/right to switch channels.
 
 Dragging your finger along the right border will change the volume.
+
+### Powering on
+
+If your remote device is powered off and you need the remote to power it on, there is an interesting Catch-22 situation. This is not specific to this web player, but it happens with the Slinger player as well (just less pronounced).
+`slingbox-server.py` will not send any remote events before the player connects, so you cannot open the player, click on the Power button and then start the video - the Power button will be ignored. So the typical chain of events is:
+
+1. You open the player (be it this web player or something else)
+2. You start streaming (e.g. by clicking on the Play button)
+3. Slingbox will deliver the stream without the video track
+4. The player (usually powered by ffmpeg) will buffer some data, looking for the video, and then gives up
+5. The player disconnects from the Slinger server
+6. Any subsequent attempt to press the Power button will be ignored.
+
+Fortunately, there is enough time (10 seconds or so) between the points 4. and 5. where you can use the remote... If you miss the window, hit the Stop button and then Play and try again.
+
+
+The modified slinger server is still backward compatible, you can use it the usual way, including Slinger player. You can also stream to several clients as usual.
+
+The remuxed stream in mp4 container is available at `http://localhost:8080/slingbox?remux=1` (replace `localhost`, port and `slingbox` with your values, if different from the default and/or running the server remotely). However, you can connect to the remuxed stream only once.
+
+There are some other parameters you can use:
+
+ * `remux=1` - remux this stream into mp4 container
+ * `dummy=anything` - will be ignored, this was my attempt at mitigating caching issues
+
+Anything else will be interpreted as the initial channel, for backward compatibility.
+
+## Notes
+
+What I intended to be a quick&dirty hack turned out to be more complicated and lead me through the rabbit hole of html5 `<video> quirks and limitations. 
+
+I had to modity the original `slingbox-server.py` somewhat more than I expected, and I had to put a lot of javascript to the web player to make it usable. The code is full of hacks and workarounds - it is not an elegant code, but at least it works for me.
+
 
