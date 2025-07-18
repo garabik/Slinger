@@ -5,6 +5,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>Slinger WebPlay</title>
+    <!-- 
+    <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+    <script>eruda.init();</script>
+    -->
     <script>
 // control the remote with your keyboard
 const keyMap = new Map();
@@ -88,6 +92,13 @@ html, body {
 }
 
 #videoaspect {
+  object-fit: contain;
+  max-width: 100vw;
+  max-height: 100vh;
+  padding: 0;
+  margin-left: auto;
+  margin-right: 0;
+  overflow: hidden;
   background-color: yellow;
   aspect-ratio: 16 / 9;
   z-index: 1;
@@ -96,6 +107,7 @@ html, body {
 #videowrap {
   width: 100%;
   height: 100%;
+  padding: 0;
   margin: auto;
   background-color: rgba(.1, 0, .1, 0.2);
   z-index: 10;
@@ -137,15 +149,15 @@ html, body {
 <div id="player">
   <div id="ir" style="display:none;">⇈ </div>
   <div id="remote" style="display: none;">
-        <iframe id="remoteframe" src="Remote.html" frameborder="0"></iframe>
+    <iframe id="remoteframe" src="Remote.html" frameborder="0"></iframe>
   </div>
   <div id="videocontrols">
-    <button id="cnt_videoplay" onclick="videoPlay();">⏵Play</button>
-    <button id="cnt_fullscreen" onclick="toggleFullscreen();"><sup>⇱</sup><sub>⇲</sub>Fullscreen</button>
-    <button id="cnt_remotebutton" onclick="toggleRemote();">&#x1F3AE;Remote</button>
-    <button id="cnt_mute" onclick=toggleMute();>&#x1F507;Mute</button>
-    <button id="cnt_reload" onclick=reloadPage();>↻Reload</button>
-    <!-- button id="changeaspect" onclick="toggleAspect();">A/R</button> -->
+    <button id="cnt_videoplay" onclick="videoPlayPause();">⏵ Play</button>
+    <button id="cnt_videostop" onclick="videoStop();">⏹Stop</button>
+    <button id="cnt_fullscreen" onclick="toggleFullscreen();"><sup>⇱</sup><sub>⇲</sub> Fullscreen</button>
+    <button id="cnt_remotebutton" onclick="toggleRemote();">&#x1F3AE; Remote</button>
+    <button id="cnt_mute" onclick=toggleMute();>&#x1F507; Mute</button>
+    <button id="cnt_aspect" onclick="toggleAspect();">16/9</button>
   </div>
   <div id="videowrap" onclick="toggleRemoteAndControls();" ondblclick="toggleFullscreen();">
       <div id="videoaspect">
@@ -158,6 +170,18 @@ html, body {
 </div> <!-- player -->
 
 <script>
+
+var slingbox_id = 'slingbox';
+const queryString = window.location.search;
+console.log("QS "+queryString);
+const urlParams = new URLSearchParams(queryString);
+if (urlParams.has('slingbox_id')) {
+    slingbox_id = urlParams.get('slingbox_id');
+};
+
+// keep track if we are changing volume by dragging a finger
+var isDragging = false;
+
 // function to display pop up message for a short time
 function popup(message) {
     const player = document.getElementById('player');
@@ -222,6 +246,7 @@ function swipeHandler(direction, startEvent, endEvent) {
         console.log("Dragging detected, ignoring swipe");
         return; // Ignore swipes while dragging
     }
+
     if (direction === 'up' || direction === 'right') {
         sendCode('fromSwipe_up', 38); // ArrowUp
     } else if (direction === 'down' || direction === 'left') {
@@ -232,27 +257,17 @@ function swipeHandler(direction, startEvent, endEvent) {
 }
 
 function bodyLoad() {
-    var slingbox_id = 'slingbox';
-    video_random_id = Math.round(Math.random() * 1000000);
-    console.log("body loaded, video id: " + video_random_id);
-    const queryString = window.location.search;
-    console.log("QS "+queryString);
-    const urlParams = new URLSearchParams(queryString);
-    if (urlParams.has('slingbox_id')) {
-        slingbox_id = urlParams.get('slingbox_id');
-    };
-    video = document.getElementById('video');
-    video.src = "/"+slingbox_id+"?remux=1&dummy=" + video_random_id;
-    sizeRemote(); // Set remote size
+    sizeRemote(); // Set remote size, does not seem to work
     videowrap = document.getElementById('videowrap');
     registerTouchEvent(videowrap, swipeHandler);
 
     // change video volume by dragging your finger along the right side of the screen
-    var isDragging = false;
     document.addEventListener('touchstart', (e) => {
         const touchX = e.touches[0].clientX;
-        if (touchX > window.innerWidth - 30) {
+        if (touchX > window.innerWidth - 50) {
             isDragging = true;
+            event.preventDefault();
+            event.stopPropagation();
         }
     });
     document.addEventListener('touchmove', (e) => {
@@ -261,6 +276,8 @@ function bodyLoad() {
         const volume = 1 - (touchY / window.innerHeight);
         video.volume = Math.min(Math.max(volume, 0), 1);
         popup(`Vol ${Math.round(video.volume * 100)}%`);
+        event.preventDefault();
+        event.stopPropagation();
     });
     document.addEventListener('touchend', () => {
         isDragging = false;
@@ -271,16 +288,38 @@ function bodyLoad() {
     });
 };
 
-function reloadPage() {
-    console.log("Reloading page");
-    popup("Reloading");
-    window.location.reload();
+function videoPlayPause() {
+    console.log("video play request");
+    let video_random_id = Math.round(Math.random() * 1000000);
+    const video = document.getElementById('video');
+
+    if (!video.src || video.src === "") {
+        console.log("Setting video source");
+        video.src = "/"+slingbox_id+"?remux=1&dummy=" + video_random_id;
+        video.load(); // Load the new source
+    };
+
+    if (video.paused) {
+        popup("Play");
+        video.play().catch(error => {
+            console.error("Error playing video:", error);
+            popup("Error playing video");
+        });
+    } else {
+        video.pause();
+        popup("Paused");
+    }
+    const button = document.getElementById('cnt_videoplay');
+    button.innerHTML = video.paused ? "⏵ Play" : "⏸ Pause";
 };
 
-function videoPlay() {
-    console.log("video play request");
-    popup("Play");
-    document.getElementById('video').play()
+function videoStop() {
+    console.log("video stop request");
+    let video = document.getElementById('video');
+    video.pause();
+    video.src = "";
+    video.removeAttribute('src');
+    video.load(); // Load the video element to reset it
 };
 
 function toggleRemote() {
@@ -291,7 +330,6 @@ function toggleRemote() {
     } else {
         remoteDiv.style.display = 'none'; // Hide the remote and controls
     }
-    videoFill(); // Recalculate video aspect ratio
     event.stopPropagation();
 }
 
@@ -316,60 +354,44 @@ function toggleMute() {
     } else {
         video.muted = true;
     }
-};
-
-function videoFill() {
-    // get videowrap size
-    var videowrap = document.getElementById('videowrap');
-    // get the width and height of the videowrap div
-    var wrapWidth = videowrap.offsetWidth;
-    var wrapHeight = videowrap.offsetHeight;
-    // if the width is greater than the height * 16/9, keep the height but reduce the width
-    newWidth = wrapWidth;
-    newHeight = wrapHeight;
-    if (wrapWidth > wrapHeight * (16 / 9)) {
-        // reduce the width to fit the height
-        newWidth = Math.round(wrapHeight * (16 / 9));
-    } else {
-        // if the height is greater than the width * 9/16, keep the width but reduce the height
-        newHeight = Math.round(wrapWidth * (9 / 16));
-    };
-    newWidth = Math.max(newWidth, 160); // minimum width
-    newHeight = Math.max(newHeight, 90); // minimum height
-    var videoaspect = document.getElementById('videoaspect');
- //   videoaspect.style.width = newWidth + 'px';
- //   videoaspect.style.height = newHeight + 'px';
-    console.log(`Video aspect ratio set to ${newWidth}x${newHeight}`);
+    const button = document.getElementById('cnt_mute');
+    button.innerHTML = video.muted ? "🔇 Mute" : "🔈 Mute";
 };
 
 function toggleFullscreen() {
+    const player = document.getElementById('player');
+    const button = document.getElementById('cnt_fullscreen');
+
     popup("fullscreen");
-    var player = document.getElementById('player');
+
     if (document.fullscreenElement) {
         document.exitFullscreen();
+        button.innerHTML = '<sup>⇱</sup><sub>⇲</sub> Fullscreen';
     } else {
         player.requestFullscreen = player.requestFullscreen || player.webkitRequestFullscreen || player.mozRequestFullScreen || player.msRequestFullscreen;
         player.requestFullscreen().catch(err => {
             console.error(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
         });
+        button.innerHTML = '<sup>⇲</sup><sub>⇱</sub> Fullscreen';
     };
-    setTimeout(() => {
-        videoFill(); // Recalculate video aspect ratio after fullscreen change
-    }, 500);
 };
 
-/*
-var timeout = null;
-function windowResize() {
-    if (timeout) {
-        clearTimeout(timeout);
+function toggleAspect() {
+    const videoaspect = document.getElementById('videoaspect');
+    const button = document.getElementById('cnt_aspect');
+    //toggle three states: 16/9, 4/3, aspect ratio of your window
+    if (videoaspect.style.aspectRatio === '16 / 9') {
+        videoaspect.style.aspectRatio = '4 / 3';
+        button.innerHTML = '4/3';
+    } else if (videoaspect.style.aspectRatio === '4 / 3') {
+        videoaspect.style.aspectRatio = `${window.innerWidth / window.innerHeight}`;
+        button.innerHTML = '[]';
+    } else {
+        videoaspect.style.aspectRatio = '16 / 9';
+        button.innerHTML = '16/9';
     }
-    timeout = setTimeout(function() {
-        console.log('Window resized, recalculating video aspect ratio');
-        videoFill(); // Recalculate video aspect ratio on window resize
-    }, 500);
 };
-*/
+
 
 // if there is an error playing the video, sleep 1 sec and try again
 document.getElementById('video').addEventListener('error', function() {

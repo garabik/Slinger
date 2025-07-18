@@ -8,15 +8,15 @@ class Mp4Rewrapper:
         # Start ffmpeg: read from pipe:0, write to pipe:1
         # - copy the codec (no re-encode): vcodec='copy'
         # - produce a fragmented MP4 (allows streaming): movflags='frag_keyframe+empty_moov+default_base_moof'
-        print('*** Initializing mp4 remuxer')
+        print('Initialize mp4 remuxer')
         self.proc = (
             ffmpeg
             .input('pipe:0',
-                   format="asf")
+                   format="asf",
+                   sample_fmt='fltp',
+                   )
            .output('pipe:1',
                     format='mp4',
-                    pix_fmt='yuv420p',
-                    sample_fmt='fltp',
                     vcodec='copy',
                     acodec='copy',
                     # these two options are not present in older ffmpeg versions
@@ -26,9 +26,9 @@ class Mp4Rewrapper:
                     #fflags='nobuffer+discardcorrupt+flush_packets',
                     flags='+global_header',
                     probesize=32,
-                    frag_duration = 200000,  # 0.2 sec
+                    frag_duration = 500000,
                     movflags='frag_keyframe+empty_moov+default_base_moof+separate_moof',
-                    absf='aac_adtstoasc',
+#                    absf='aac_adtstoasc',
                     )
             .run_async(quiet=False, pipe_stdin=True, pipe_stdout=True)#, pipe_stderr=True)
         )
@@ -50,14 +50,12 @@ class Mp4Rewrapper:
             # read whatever MP4 data is available
             # this is nonblocking
             r = b''
-            timestamp = time.time()
             while True:
-                read_in =  self.proc.stdout.read(read_chunk_size)
+                read_in = self.proc.stdout.read(read_chunk_size)
                 if read_in:
                     #print('read in', len(read_in), 'bytes')
                     r += read_in
                 else:
-                    # no data, assume EOF
                     break
 #            if r:
 #                print('==== end reading ====', len(r))
@@ -66,10 +64,18 @@ class Mp4Rewrapper:
 
     def close(self):
         print('closing ffmpeg')
-        # signal EOF to ffmpeg, let it finish writing final atoms
+        # signal EOF to ffmpeg, let it finish writing final data
         with self.lock:
             self.proc.stdin.close()
+        # drain ffmpeg's stdout
+        out = b''
+        while True:
+            chunk = self.proc.stdout.read(65536)
+            if not chunk:
+                break
+            out += chunk
         self.proc.wait()
+        return out
 
     def __del__(self):
         print('del rewrap')
