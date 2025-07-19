@@ -153,7 +153,7 @@ html, body {
   </div>
   <div id="videocontrols">
     <button id="cnt_videoplay" onclick="videoPlayPause();">⏵ Play</button>
-    <button id="cnt_videostop" onclick="videoStop();">⏹Stop</button>
+    <button id="cnt_videostop" onclick="videoStop();">⏹ Stop</button>
     <button id="cnt_fullscreen" onclick="toggleFullscreen();"><sup>⇱</sup><sub>⇲</sub> Fullscreen</button>
     <button id="cnt_remotebutton" onclick="toggleRemote();">&#x1F3AE; Remote</button>
     <button id="cnt_mute" onclick=toggleMute();>&#x1F507; Mute</button>
@@ -315,11 +315,14 @@ function videoPlayPause() {
 
 function videoStop() {
     console.log("video stop request");
+    popup("Stop");
     let video = document.getElementById('video');
     video.pause();
     video.src = "";
     video.removeAttribute('src');
     video.load(); // Load the video element to reset it
+    const button = document.getElementById('cnt_videoplay');
+    button.innerHTML = "⏵ Play";
 };
 
 function toggleRemote() {
@@ -385,7 +388,7 @@ function toggleAspect() {
         button.innerHTML = '4/3';
     } else if (videoaspect.style.aspectRatio === '4 / 3') {
         videoaspect.style.aspectRatio = `${window.innerWidth / window.innerHeight}`;
-        button.innerHTML = '[]';
+        button.innerHTML = '⛶ ';
     } else {
         videoaspect.style.aspectRatio = '16 / 9';
         button.innerHTML = '16/9';

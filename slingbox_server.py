@@ -23,6 +23,13 @@ import rewrapper
 
 version='4.01'
 
+def safe_int(s, default=0):
+    """Convert string to int, return default if conversion fails."""
+    try:
+        return int(s)
+    except:
+        return default
+
 def encipher(v, k):
     y = c_uint32(v[0])
     z = c_uint32(v[1])
@@ -232,7 +239,7 @@ def remux_video_stream(mp4wrapper, data):
 
 remux_video_stream.timestamp = None
 
-def streamer(maxstreams, config_fn, section_name, box_name, streamer_q, server_port):
+def streamer(maxstreams, config_fn, forced_params, section_name, box_name, streamer_q, server_port):
     global streamer_qs, stati, num_streams
     smode = 0x2000               # basic cipher mode,
     sid = 0
@@ -813,6 +820,7 @@ def streamer(maxstreams, config_fn, section_name, box_name, streamer_q, server_p
         my_num_streams = 0
         my_max_streams = int(slinginfo.get('maxstreams', '10'))
         print('Streamer: ', name, 'Waiting for first stream, flushing any IR requests that arrive while not connected to slingbox')
+        print('ff', forced_params)
          
         #if box_name == '/' : stati_key = '/'
         #else: stati_key = '/'+ box_name
@@ -865,6 +873,9 @@ def streamer(maxstreams, config_fn, section_name, box_name, streamer_q, server_p
         if resolution < 0 or resolution > 16 : 
             print(name, 'Invalid Resolution', resolution, 'Defaulting to 640x480')
             resolution = 5;
+        if 'resolution' in forced_params:
+            resolution = forced_params['resolution']
+            print(name, 'Forced Resolution', resolution)
         FrameRate = int(slinginfo.get('FrameRate', 30 ))
         VideoBandwidth = int(slinginfo.get('VideoBandwidth', 2000 ))
         VideoSmoothness = int(slinginfo.get('VideoSmoothness', 63 ))
@@ -1165,7 +1176,8 @@ def ConnectionManager(config_fn):
         
     global streamer_qs
     global remux_connections # keeps track which connections (sockets) to remux to mp4
-
+    
+    forced_params = {} # parameters forced by url
     streamer_q = None
     cp = ConfigParser()
     cp.read(config_fn)
@@ -1192,7 +1204,7 @@ def ConnectionManager(config_fn):
                 streamer_qs[box_url] = queue.Queue()
                 print('Building page for', box)
                 remotes[box] = [box_url, BuildPage(cp, box)]
-                Thread(target=streamer, args=(maxstreams, config_fn, box, box, streamer_qs[box_url], local_port)).start()
+                Thread(target=streamer, args=(maxstreams, config_fn, forced_params, box, box, streamer_qs[box_url], local_port)).start()
             else:
                 print('Missing [%s] section in config file' % box)
                 continue
@@ -1206,7 +1218,7 @@ def ConnectionManager(config_fn):
         print('Building page for Slingbox')
         remotes[box] = [box_url, BuildPage(cp, 'REMOTE')]
         print('Starting Streamer Thread for Slingbox')
-        Thread(target=streamer, args=(maxstreams, config_fn, 'SLINGBOX', box, streamer_qs[box_url], local_port)).start()
+        Thread(target=streamer, args=(maxstreams, config_fn, forced_params, 'SLINGBOX', box, streamer_qs[box_url], local_port)).start()
 
     # Create a TCP/IP socket
     max_send_tcp_size = find_max_buffer_size( socket.SO_SNDBUF )
@@ -1258,6 +1270,7 @@ def ConnectionManager(config_fn):
                 connection.setblocking(False)
                 do_remux = False
                 channel = 0
+
                 if '?' in uri:
                     parsed_uri = urlparse(uri)
                     streamer_name = parsed_uri.path
@@ -1269,14 +1282,19 @@ def ConnectionManager(config_fn):
                             del parsed_qs['remux']
                         if 'dummy' in parsed_qs:
                             del parsed_qs['dummy']
+                        if 'resolution' in parsed_qs:
+                            forced_resolution = parsed_qs['resolution'][0].strip().lower()
+                            forced_resolution = safe_int(forced_resolution, 1)
+                            forced_params['resolution'] = forced_resolution
+                            del parsed_qs['resolution']
+                        else:
+                            if 'resolution' in forced_params:
+                                del forced_params['resolution']
                     if parsed_qs:
                         # for backward compatibility, anything can be a key, and the value is the channel number
                         arbitrary_key = list(parsed_qs.keys())[0]
                         channel = parsed_qs[arbitrary_key][0]
-                        try:
-                            channel = int(channel)
-                        except:
-                            channel = 0
+                        channel = safe_int(channel, 0)
                 else:
                     streamer_name = data[start_uri:end_uri]
                     channel = 0

@@ -1,5 +1,7 @@
 # Slinger web player
 
+**Beware**: this is in very early stage, it is not well tested, and it may not work for you. And this documentation is somewhat sketchy.
+
 This is a forked version of the original Slinger, software that allows you to connect to Slingboxes. For details, please refer to the original README-original.md documentation.
 
 This forked version implements remuxing the video stream into the mp4 container, with the sole purpose of allowing playback on web browsers.
@@ -68,16 +70,17 @@ Dragging your finger along the right border will change the volume.
 ### Powering on
 
 If your remote device is powered off and you need the remote to power it on, there is an interesting Catch-22 situation. This is not specific to this web player, but it happens with the Slinger player as well (just less pronounced).
-`slingbox-server.py` will not send any remote events before the player connects, so you cannot open the player, click on the Power button and then start the video - the Power button will be ignored. So the typical chain of events is:
+`slingbox-server.py` will not send any remote events before the player connects, so if you just click on the Power button and then start the video, the Power button will be ignored. So the typical chain of events is:
 
 1. You open the player (be it this web player or something else)
 2. You start streaming (e.g. by clicking on the Play button)
 3. Slingbox will deliver the stream without the video track
-4. The player (usually powered by ffmpeg) will buffer some data, looking for the video, and then gives up
+4. The player (usually powered by ffmpeg) will buffer some data, looking for the video, and then gives up and hangs
 5. The player disconnects from the Slinger server
 6. Any subsequent attempt to press the Power button will be ignored.
 
-Fortunately, there is enough time (10 seconds or so) between the points 4. and 5. where you can use the remote... If you miss the window, hit the Stop button and then Play and try again.
+Fortunately, there is enough time (10 seconds or so) between the points 4. and 5. where you can use the remote... If you miss the window, hit the Stop button and then Play and try again. However, even if you powered on the device, the player has already ingested some packets without the video track, and will hang (and then disconnect) again. So you will have to repeat the Stop and Play sequence again, or even reload the webpage, and then it should work. Unfortunately, there is no visual feedback.
+
 
 
 The modified slinger server is still backward compatible, you can use it the usual way, including Slinger player. You can also stream to several clients as usual.
@@ -97,4 +100,7 @@ What I intended to be a quick&dirty hack turned out to be more complicated and l
 
 I had to modity the original `slingbox-server.py` somewhat more than I expected, and I had to put a lot of javascript to the web player to make it usable. The code is full of hacks and workarounds - it is not an elegant code, but at least it works for me.
 
+Since the original stream is in h264+aac, remuxing is cheap and won't take much CPU time (I have no idea if Slingbox Classic is capable of h264, or just WM9). In particular, there are no resource problems with running it on any recent-ish Android mobile phone or tablet. On my old Intel Celeron N3050 1.60GHz notebook the remuxing takes about 20-30% CPU time, the browser playing the video takes another 30%.
+
+This has been tested only with Slingbox Pro HD.
 
