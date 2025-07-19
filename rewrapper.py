@@ -1,7 +1,7 @@
 import ffmpeg
 import threading
 import os
-import time
+import time, subprocess
 
 class Mp4Rewrapper:
     def __init__(self):
@@ -74,7 +74,10 @@ class Mp4Rewrapper:
             if not chunk:
                 break
             out += chunk
-        self.proc.wait()
+        try:
+            self.proc.wait(timeout=2)
+        except subprocess.TimeoutExpired:
+            pass
         return out
 
     def __del__(self):
