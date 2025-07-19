@@ -178,6 +178,13 @@ const urlParams = new URLSearchParams(queryString);
 if (urlParams.has('slingbox_id')) {
     slingbox_id = urlParams.get('slingbox_id');
 };
+if (urlParams.has('resolution')) {
+    forced_resolution = urlParams.get('resolution');
+};
+if (urlParams.has('bitrate')) {
+    forced_resolution = urlParams.get('bitrate');
+};
+
 
 // keep track if we are changing volume by dragging a finger
 var isDragging = false;
@@ -296,6 +303,12 @@ function videoPlayPause() {
     if (!video.src || video.src === "") {
         console.log("Setting video source");
         video.src = "/"+slingbox_id+"?remux=1&dummy=" + video_random_id;
+        if (forced_resolution) {
+            video.src += "&resolution=" + forced_resolution;
+        }
+        if (forced_bitrate) {
+            video.src += "&bitrate=" + forced_bitrate;
+        }
         video.load(); // Load the new source
     };
 

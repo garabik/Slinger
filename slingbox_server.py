@@ -869,7 +869,7 @@ def streamer(maxstreams, config_fn, forced_params, section_name, box_name, strea
                 print('name, Bad E1: Password Missing characters')
                 continue             
         
-        resolution = int(slinginfo.get('Resolution', 12 ))
+        resolution = int(slinginfo.get('Resolution', 12))
         if resolution < 0 or resolution > 16 : 
             print(name, 'Invalid Resolution', resolution, 'Defaulting to 640x480')
             resolution = 5;
@@ -878,6 +878,9 @@ def streamer(maxstreams, config_fn, forced_params, section_name, box_name, strea
             print(name, 'Forced Resolution', resolution)
         FrameRate = int(slinginfo.get('FrameRate', 30 ))
         VideoBandwidth = int(slinginfo.get('VideoBandwidth', 2000 ))
+        if 'bitrate' in forced_params:
+            VideoBandwidth = forced_params['bitrate']
+            print(name, 'Forced Video Bitrate', VideoBandwidth)
         VideoSmoothness = int(slinginfo.get('VideoSmoothness', 63 ))
         IframeRate = int(slinginfo.get('IframeRate', 5 ))
         AudioBitRate = int(slinginfo.get('AudioBitRate', 64 ))
@@ -1284,9 +1287,16 @@ def ConnectionManager(config_fn):
                             del parsed_qs['dummy']
                         if 'resolution' in parsed_qs:
                             forced_resolution = parsed_qs['resolution'][0].strip().lower()
-                            forced_resolution = safe_int(forced_resolution, 1)
-                            forced_params['resolution'] = forced_resolution
+                            forced_resolution = safe_int(forced_resolution, -1)
+                            if forced_resolution>=0:
+                                forced_params['resolution'] = forced_resolution
                             del parsed_qs['resolution']
+                        if 'bitrate' in parsed_qs:
+                            forced_bitrate = parsed_qs['bitrate'][0].strip().lower()
+                            forced_bitrate = safe_int(forced_bitrate, -1)
+                            if forced_bitrate >= 0:
+                                forced_params['bitrate'] = forced_bitrate
+                            del parsed_qs['bitrate']
                         else:
                             if 'resolution' in forced_params:
                                 del forced_params['resolution']
