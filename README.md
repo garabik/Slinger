@@ -38,7 +38,7 @@ pip install --break-system-packages ffmpeg-python
 
 This should be a drop-in replacement for the original Slingerserver and by default, it should work in the same way.
 
-The web player is in the file webplay.html, make sure it is in the same directory as the slingbox_server.py, and you need a python moddule rewrap.py (in the same directory).
+The web player is in the file webplay.html, make sure it is in the same directory as the slingbox_server.py, and you need a python moddule rewrapper.py (in the same directory).
 
 
 ## Usage
