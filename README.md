@@ -18,20 +18,22 @@ You need ffmpeg and ffmpeg-python (*not* python-ffmpeg!)
 
 On Debian, you can install them using following commands:
 
-    apt-get install ffmpeg
-    pip install --break-system-packages ffmpeg-python # or setup a venv -- this is out of scope of this documentation
+```
+apt-get install ffmpeg
+pip install --break-system-packages ffmpeg-python # or setup a venv -- this is out of scope of this documentation
+```
 
 On Fedora:
 
 ```
-    sudo dnf install python3-ffmpeg-python
+sudo dnf install python3-ffmpeg-python
 ```
 
 On Android + Termux:
 
 ```
-    pkg install ffmpeg
-    pip install --break-system-packages ffmpeg-python
+pkg install ffmpeg
+pip install --break-system-packages ffmpeg-python
 ```
 
 This should be a drop-in replacement and by default, it should work in the same way.
