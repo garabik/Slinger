@@ -22,9 +22,11 @@ On Debian, you can install them using following commands:
     pip install --break-system-packages ffmpeg-python # or setup a venv -- this is out of scope of this documentation
 
 On Fedora:
+
     sudo dnf install python3-ffmpeg-python
 
 On Android + Termux:
+
     pkg install ffmpeg
     pip install --break-system-packages ffmpeg-python
 
