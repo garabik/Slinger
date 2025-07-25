@@ -44,6 +44,11 @@ keyMap.set('R',  74);
 keyMap.set('G',  75);
 keyMap.set('Y',  76);
 keyMap.set('B',  77);
+
+// for swiping events
+const chup_code = 38; // ArrowUp
+const chdown_code = 39; // ArrowDown
+
     </script>
 
     <style>
@@ -116,12 +121,12 @@ html, body {
 #videocontrols {
   position: absolute;
   bottom: 0;
-  left: 40vw;
-  width: 50vw;
+  left: 35vw;
+  max-width: 64vw;
   z-index: 30;
 }
 
-#videocontrols button {
+#videocontrols button, #videocontrols details {
   background-color: #333;
   color: white;
   border: none;
@@ -131,6 +136,12 @@ html, body {
   cursor: crosshair;
   font-family: monospace;
   height: 5ex;
+}
+
+#videocontrols details:not([open])  {
+  display: inline-block;
+  max-width: 5em;
+  background-color: inherit;
 }
 
 #ir {
@@ -158,8 +169,32 @@ html, body {
     <button id="cnt_remotebutton" onclick="toggleRemote();">&#x1F3AE; Remote</button>
     <button id="cnt_mute" onclick=toggleMute();>&#x1F507; Mute</button>
     <button id="cnt_aspect" onclick="toggleAspect();">16/9</button>
+    <details id="cnt_details">
+      <summary>Opts</summary>
+    Res:<select id="cnt_resolution" onchange="forced_resolution = this.value;">
+        <option value="" selected>default</option>
+        <option value="5">640x480</option>
+        <option value="6">640x240</option>
+        <option value="1">320x240</option>
+        <option value="2">160x120</option>
+        <option value="3">352x240</option>
+        <option value="4">176x120</option>
+        <option value="7">320x480</option>
+        <option value="8">128x96</option>
+        <option value="9">224x176</option>
+        <option value="10">448x240</option>
+        <option value="11">256x192</option>
+        <option value="12">1280x720</option>
+        <option value="13">1440x544</option>
+        <option value="14">1680x544</option>
+        <option value="15">1920x544</option>
+        <option value="16">1920x1080</option>
+      </select>
+
+    Bitrate:<input type="text" id="cnt_bitrate" min="0" max="3000" style="width: 6em;" oninput="forced_bitrate = this.value;">kbps
+    </details>
   </div>
-  <div id="videowrap" onclick="toggleRemoteAndControls();" ondblclick="toggleFullscreen();">
+  <div id="videowrap" tabindex="-1" onclick="toggleRemoteAndControls();" ondblclick="toggleFullscreen();">
       <div id="videoaspect">
         <video id="video" preload="none" > <!-- onclick="toggleRemote()" -->
               <!--            <source id="videosource" src="none" type="video/mp4" /> -->
@@ -178,11 +213,13 @@ const urlParams = new URLSearchParams(queryString);
 if (urlParams.has('slingbox_id')) {
     slingbox_id = urlParams.get('slingbox_id');
 };
+var forced_resolution = null;
+var forced_bitrate = null;
 if (urlParams.has('resolution')) {
     forced_resolution = urlParams.get('resolution');
 };
 if (urlParams.has('bitrate')) {
-    forced_resolution = urlParams.get('bitrate');
+    forced_bitrate = urlParams.get('bitrate');
 };
 
 
@@ -255,9 +292,9 @@ function swipeHandler(direction, startEvent, endEvent) {
     }
 
     if (direction === 'up' || direction === 'right') {
-        sendCode('fromSwipe_up', 38); // ArrowUp
+        sendCode('fromSwipe_up', chup_code); // ArrowUp
     } else if (direction === 'down' || direction === 'left') {
-        sendCode('fromSwipe_down', 39); // ArrowDown
+        sendCode('fromSwipe_down', chdown_code); // ArrowDown
 //    } else if (direction === 'click') {
 //        toggleRemoteAndControls();
     }
@@ -477,8 +514,7 @@ function handleKey(event) {
     }
 };
 
-document.body.addEventListener('keydown', handleKey);
-
+document.getElementById('videowrap').addEventListener('keydown', handleKey);
 
 </script>
 
