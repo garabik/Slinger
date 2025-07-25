@@ -256,7 +256,6 @@ def streamer(maxstreams, config_fn, forced_params, section_name, box_name, strea
     rccode = 0
     streams = []
     stream_header = None
-###    stream_header_remuxed = None
     max_recv_tcp_buffer = find_max_buffer_size(socket.SO_RCVBUF)
 
     def new_key( sid, rand, challange ):    
@@ -814,7 +813,6 @@ def streamer(maxstreams, config_fn, forced_params, section_name, box_name, strea
     print(name, 'Using slingbox at ', sling_net_address)
     while True:
         stream_header = None
-        ###stream_header_remuxed = None
         streams = []
         # Wait for first stream request to arrive
         cp = ConfigParser()
