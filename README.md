@@ -57,6 +57,8 @@ You can also force a resolution or a bitrate, by appending '?resolution=N' or '?
 For example, to force resolution 320x240 and bitrate 500kbps, use `http://localhost:8080/webplay.html?slingbox_id=nameofyourslingbox&resolution=1&bitrate=500` (this will work only if there is no other stream playing). Or you can expand the `Opts` button and select the resolution and bitrate there (if playing, you have to Stop and Play the video to apply the changes).
 
 
+There is also an aspect ratio change button.
+
 The remote can be controlled by a keyboard, using the following keys:
 
  * digits 0-9
@@ -79,6 +81,7 @@ For touchscreen devices, swiping your finger up/down sends the up/down events (i
 
 Dragging your finger along the right border will change the volume.
 
+
 ### Powering on
 
 If your remote device is powered off and you need the remote to power it on, there is an interesting Catch-22 situation. This is not specific to this web player, but it happens with the Slinger player as well (just less pronounced).
@@ -92,7 +95,6 @@ If your remote device is powered off and you need the remote to power it on, the
 6. Any subsequent attempt to press the Power button will be ignored.
 
 Fortunately, there is enough time (10 seconds or so) between the points 4. and 5. where you can use the remote... If you miss the window, hit the Stop button and then Play and try again. However, even if you powered on the device, the player has already ingested some packets without the video track, and will hang (and then disconnect) again. So you will have to repeat the Stop and Play sequence again, or even reload the webpage, and then it should work. Unfortunately, there is no visual feedback.
-
 
 
 The modified slinger server is still backward compatible, you can use it the usual way, including Slinger player. You can also stream to several clients as usual.
@@ -118,5 +120,5 @@ Since the original stream is in h264+aac, remuxing is cheap and won't take much 
 
 The latency is horrible - I used the standard tricks when remuxing the stream and pushing it to the client, but it still adds some latency, and on top of that web browser buffers the video quite a lot. Sigh...
 
-This has been tested only with Slingbox Pro HD.
+This has been tested only with Slingbox Pro HD, on Chromium and Firefox on Linux (Opera on Linux does not work, known bug in linking with ffmpeg), and on Opera and Chrome on Android.
 
