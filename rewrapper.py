@@ -26,11 +26,11 @@ class Mp4Rewrapper:
                     #fflags='nobuffer+discardcorrupt+flush_packets',
                     flags='+global_header',
                     probesize=32,
-                    frag_duration = 500000,
+                    frag_duration = 300000,
                     movflags='frag_keyframe+empty_moov+default_base_moof+separate_moof',
 #                    absf='aac_adtstoasc',
                     )
-            .run_async(quiet=False, pipe_stdin=True, pipe_stdout=True)#, pipe_stderr=True)
+            .run_async(quiet=True, pipe_stdin=True, pipe_stdout=True)#, pipe_stderr=True)
         )
         self.lock = threading.Lock()  # make thread-safe if you want to write/read from multiple threads
         os.set_blocking(self.proc.stdout.fileno(), False)
@@ -78,6 +78,7 @@ class Mp4Rewrapper:
             self.proc.wait(timeout=2)
         except subprocess.TimeoutExpired:
             pass
+        print('ffmpeg closed')
         return out
 
     def __del__(self):

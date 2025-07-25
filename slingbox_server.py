@@ -21,7 +21,7 @@ from urllib.parse import urlparse, parse_qs
 
 import rewrapper
 
-version='4.01'
+version='4.02-remux'
 
 def safe_int(s, default=0):
     """Convert string to int, return default if conversion fails."""
@@ -256,8 +256,7 @@ def streamer(maxstreams, config_fn, forced_params, section_name, box_name, strea
     rccode = 0
     streams = []
     stream_header = None
-    stream_header_remuxed = None
-    mp4wrapper = None
+###    stream_header_remuxed = None
     max_recv_tcp_buffer = find_max_buffer_size(socket.SO_RCVBUF)
 
     def new_key( sid, rand, challange ):    
@@ -394,7 +393,7 @@ def streamer(maxstreams, config_fn, forced_params, section_name, box_name, strea
         return True
      
     def start_slingbox_session(streams):
-        nonlocal stream_header, stream_header_remuxed, sid, seq, s_ctl, dbuf, skey, stat, smode, mp4wrapper
+        nonlocal stream_header, stream_header_remuxed, sid, seq, s_ctl, dbuf, skey, stat, smode
         global stati, num_streams
 
         skey = [0xBCDEAAAA,0x87FBBBBA,0x7CCCCFFA,0xDDDDAABC]
@@ -471,7 +470,6 @@ def streamer(maxstreams, config_fn, forced_params, section_name, box_name, strea
         if not SetVideoParameters(resolution, FrameRate, VideoBandwidth, VideoSmoothness, IframeRate, AudioBitRate ) :
             return (s_ctl,None)
         stream = sling_open(sling_net_address, 'Stream')
-        mp4wrapper = rewrapper.Mp4Rewrapper()
 
         first_buffer = bytearray(stream.recv(pksize, socket.MSG_PEEK))
         magic = bytearray(u'Slingbox'.encode('utf-16le'))
@@ -502,13 +500,14 @@ def streamer(maxstreams, config_fn, forced_params, section_name, box_name, strea
         #print( 'SH', type(stream_header), pbuf(stream_header))
 
         print(name,'Stream started at', ts(), len(stream_header), len(first_buffer[h264_header_pos:]))
-        stream_header_remuxed = remux_video_stream(mp4wrapper, stream_header)
+        stream_header_remuxed = b''
         print('streams:', streams)
         for s in streams :
-            do_remux = remux_connections.get(s, False)
+            do_remux_wrapper = remux_connections.get(s, False)
+            if do_remux_wrapper:
+                stream_header_remuxed = remux_video_stream(do_remux_wrapper, stream_header)
             try:
-                # this does not work, stream_header_remuxed is most likely empty, because remux_video_stream did not yet return any data
-                if do_remux:
+                if do_remux_wrapper:
                     if stream_header_remuxed:
                         s.sendall(stream_header_remuxed)
                 else:
@@ -582,6 +581,11 @@ def streamer(maxstreams, config_fn, forced_params, section_name, box_name, strea
                 
             del stream_clients[s]
             streams.remove(s)
+            if s in remux_connections:
+                if remux_connections[s]:
+                    print(name, 'Closing remux connection')
+                    remux_connections[s].close()
+                del remux_connections[s]
             return closeconn(s)
         return None
         
@@ -810,7 +814,7 @@ def streamer(maxstreams, config_fn, forced_params, section_name, box_name, strea
     print(name, 'Using slingbox at ', sling_net_address)
     while True:
         stream_header = None
-        stream_header_remuxed = None
+        ###stream_header_remuxed = None
         streams = []
         # Wait for first stream request to arrive
         cp = ConfigParser()
@@ -820,7 +824,7 @@ def streamer(maxstreams, config_fn, forced_params, section_name, box_name, strea
         my_num_streams = 0
         my_max_streams = int(slinginfo.get('maxstreams', '10'))
         print('Streamer: ', name, 'Waiting for first stream, flushing any IR requests that arrive while not connected to slingbox')
-        print('ff', forced_params)
+        print('forced params', forced_params)
          
         #if box_name == '/' : stati_key = '/'
         #else: stati_key = '/'+ box_name
@@ -934,13 +938,11 @@ def streamer(maxstreams, config_fn, forced_params, section_name, box_name, strea
                     
                 pc += 1
 
-                msg_remuxed = remux_video_stream(mp4wrapper, msg)
-                if len(stream_header_remuxed) == 0: # ugly hack to give other players at least some initial data, but it does not work anyway
-                    stream_header_remuxed = msg_remuxed
                 for stream_socket in streams:
-                    do_remux = remux_connections.get(stream_socket, False)
+                    do_remux_wrapper = remux_connections.get(stream_socket, False)
                     try:
-                        if do_remux:
+                        if do_remux_wrapper:
+                            msg_remuxed = remux_video_stream(do_remux_wrapper, msg)
                             if msg_remuxed:
                                 sure_sendall(stream_socket, msg_remuxed)
                         else:
@@ -952,12 +954,6 @@ def streamer(maxstreams, config_fn, forced_params, section_name, box_name, strea
                             print(traceback.print_exc())
                             print('closing stream')
                             close_streaming_connection(stream_socket)
-                            if do_remux:
-                                # terminate all the streams, to give ffmpeg a chance to restart
-                                # this is an ugly hack
-                                stream_header_remuxed = b''
-                                print(name, 'Shutting down connections to restart ffmpeg')
-                                for s in streams : close_streaming_connection(s)
                         else:
                             print(ts(), name, 'Stream Terminated', e, traceback.print_exc())
                             streams.remove(stream_socket)
@@ -982,13 +978,14 @@ def streamer(maxstreams, config_fn, forced_params, section_name, box_name, strea
                             new_stream = closeconn(new_stream)
                         else:
                             my_num_streams = my_num_streams + 1
-#                            new_stream.sendall(OK)
                             sure_sendall(new_stream, OK)
                             stream_clients[new_stream], channel = parse_stream(data)
-                            do_remux = remux_connections.get(new_stream, False)
-                            if do_remux and stream_header_remuxed:
+                            do_remux_wrapper = remux_connections.get(new_stream, False)
+                            if do_remux_wrapper:# and stream_header_remuxed:
                                 print('sending remuxed header')
-                                sure_sendall(new_stream, stream_header_remuxed)
+                                stream_header_remuxed = remux_video_stream(do_remux_wrapper, stream_header) # will return most likely b''
+                                if stream_header_remuxed:
+                                    sure_sendall(new_stream, stream_header_remuxed)
                             elif stream_header:
                                 print('sending header')
                                 sure_sendall(new_stream, stream_header)
@@ -1046,7 +1043,10 @@ def streamer(maxstreams, config_fn, forced_params, section_name, box_name, strea
             print(name, 'Shutting down connections')
             s_ctl = closecontrol(s_ctl)
             for s in streams : close_streaming_connection(s)
-            mp4wrapper.close()
+            for s, wrapper in list(remux_connections.items()):
+                if wrapper:
+                    wrapper.close()
+                del remux_connections[s]
             streams = []
             stream_clients = {}
             my_num_streams = 0
@@ -1178,7 +1178,7 @@ def ConnectionManager(config_fn):
         return data 
         
     global streamer_qs
-    global remux_connections # keeps track which connections (sockets) to remux to mp4
+    global remux_connections # keeps track which connections (sockets) to remux to mp4, the values are instances of MP4Wrapper
     
     forced_params = {} # parameters forced by url
     streamer_q = None
@@ -1291,6 +1291,9 @@ def ConnectionManager(config_fn):
                             if forced_resolution>=0:
                                 forced_params['resolution'] = forced_resolution
                             del parsed_qs['resolution']
+                        else:
+                            if 'resolution' in forced_params:
+                                del forced_params['resolution']
                         if 'bitrate' in parsed_qs:
                             forced_bitrate = parsed_qs['bitrate'][0].strip().lower()
                             forced_bitrate = safe_int(forced_bitrate, -1)
@@ -1298,8 +1301,8 @@ def ConnectionManager(config_fn):
                                 forced_params['bitrate'] = forced_bitrate
                             del parsed_qs['bitrate']
                         else:
-                            if 'resolution' in forced_params:
-                                del forced_params['resolution']
+                            if 'bitrate' in forced_params:
+                                del forced_params['bitrate']
                     if parsed_qs:
                         # for backward compatibility, anything can be a key, and the value is the channel number
                         arbitrary_key = list(parsed_qs.keys())[0]
@@ -1319,16 +1322,13 @@ def ConnectionManager(config_fn):
                     print('STREAM=%s:%d:%s' % (client_address[0], client_address[1], channel))
                     streamer_q = streamer_qs[streamer_name]
                     streamer_q.put( bytearray(1) + bytes('STREAM=%s:%d:%s' % (client_address[0], client_address[1], channel), 'utf-8'))
-                    # there can be only one remuxed connection
-                    for s, s_remux in list(remux_connections.items()):
-                        if s_remux:
-                            closeconn(s)
-                            del remux_connections[s]
-                    remux_connections[connection] = do_remux
+                    if do_remux:
+                        remux_connections[connection] = rewrapper.Mp4Rewrapper()
+                    else:
+                        remux_connections[connection] = False
                     streamer_q.put(connection)
                 else:
                     print("Error: Can't find streamer for", streamer_name, 'in', streamer_qs.keys())
-                    #print(data)
                     connection = closeconn(connection)
                     continue
             elif 'GET' in data or 'POST' in data and 'HTTP' in data:
@@ -1413,8 +1413,7 @@ def BroadcastResponder():
 
 def killmyself():
     print('Shutting Down')
-    os.exit()
-    #os._exit(100)
+    os._exit(100)
 
 def parse_buttons(buttons, lineno):
     lines = buttons.split('\n')
