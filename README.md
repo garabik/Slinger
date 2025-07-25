@@ -114,7 +114,7 @@ What I intended to be a quick&dirty hack turned out to be more complicated and l
 
 I had to modity the original `slingbox-server.py` somewhat more than I expected, and I had to put a lot of javascript to the web player to make it usable. The code is full of hacks and workarounds - it is not an elegant code, but at least it works for me.
 
-Since the original stream is in h264+aac, remuxing is cheap and won't take much CPU time (I have no idea if Slingbox Classic is capable of h264, or just WM9). In particular, there are no resource problems with running it on any recent-ish Android mobile phone or tablet. On my old Intel Celeron N3050 1.60GHz notebook the remuxing takes about 20-30% CPU time, the browser playing the video takes another 30%.
+Since the original stream is in h264+aac, remuxing is cheap and won't take much CPU time (I have no idea if Slingbox Classic is capable of h264, or just WM9). In particular, there are no resource problems with running it on any recent-ish Android mobile phone or tablet. On my old Intel Celeron N3050 1.60GHz notebook the `slingbox_server.py` takes about 20-30% CPU time, the browser playing the video takes another 20-30%, the remuxing less than 1%.
 
 The latency is horrible - I used the standard tricks when remuxing the stream and pushing it to the client, but it still adds some latency, and on top of that web browser buffers the video quite a lot.
 
