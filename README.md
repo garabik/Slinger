@@ -12,7 +12,7 @@ This assumes you already have the original Slinger installed and working.
 ## Installation
 
 
-Please follow the original Slinger instructions, prepare the `config.ini file.
+Please follow the original Slinger instructions, prepare the `config.ini` file.
 
 You need ffmpeg and ffmpeg-python (*not* python-ffmpeg!)
 
@@ -44,6 +44,10 @@ Clicking on the video (even if not playing) will toggle remote control and video
 Double click will toggle fullscreen mode.
 
 Since video autoplay is finicky, you have to start it manually with the Play button (in the ugly control area at the bottom). This will take a while (watch the slingbox_server.py output for any problems, especially the first time). Clicking Play again will pause the video, and clicking it once more will resume playing. Note that this will increase the remote control lag accordingly. To go back to live streaming, click on the Stop button and then again on the Play/pause one. If you encounter problems (disconnect etc.), repeat the Stop and Play sequence.
+
+You can also force a resolution or a bitrate, by appending '?resolution=N' or '?bitrate=N' to the URL.
+For example, to force resolution 320x240 and bitrate 500kbps, use `http://localhost:8080/webplay.html?slingbox_id=nameofyourslingbox&resolution=1&bitrate=500` (this will work only if there is no other stream playing). Or you can expand the `Opts` button and select the resolution and bitrate there (if playing, you have to Stop and Play the video to apply the changes).
+
 
 The remote can be controlled by a keyboard, using the following keys:
 
@@ -87,12 +91,14 @@ The modified slinger server is still backward compatible, you can use it the usu
 
 The remuxed stream in mp4 container is available at `http://localhost:8080/slingbox?remux=1` (replace `localhost`, port and `slingbox` with your values, if different from the default and/or running the server remotely). However, you can connect to the remuxed stream only once.
 
-There are some other parameters you can use:
+These are the parameters you can use:
 
  * `remux=1` - remux this stream into mp4 container
  * `dummy=anything` - will be ignored, this was my attempt at mitigating caching issues
+ * `resolution=N` - force resolution number `N` (see README-slinger.md for the list of resolutions)
+ * `bitrate=N` - force bitrate in kbps
 
-Anything else will be interpreted as the initial channel, for backward compatibility.
+Anything else will be interpreted as the initial channel, for backward compatibility. Selecting bitrate and resolution works only if there is no other stream playing (remuxed or no).
 
 ## Notes
 
@@ -101,6 +107,8 @@ What I intended to be a quick&dirty hack turned out to be more complicated and l
 I had to modity the original `slingbox-server.py` somewhat more than I expected, and I had to put a lot of javascript to the web player to make it usable. The code is full of hacks and workarounds - it is not an elegant code, but at least it works for me.
 
 Since the original stream is in h264+aac, remuxing is cheap and won't take much CPU time (I have no idea if Slingbox Classic is capable of h264, or just WM9). In particular, there are no resource problems with running it on any recent-ish Android mobile phone or tablet. On my old Intel Celeron N3050 1.60GHz notebook the remuxing takes about 20-30% CPU time, the browser playing the video takes another 30%.
+
+The latency is horrible - I used the standard tricks when remuxing the stream and pushing it to the client, but it still adds some latency, and on top of that web browser buffers the video quite a lot.
 
 This has been tested only with Slingbox Pro HD.
 
