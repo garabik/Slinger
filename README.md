@@ -36,7 +36,7 @@ pkg install ffmpeg
 pip install --break-system-packages ffmpeg-python
 ```
 
-This should be a drop-in replacement and by default, it should work in the same way.
+This should be a drop-in replacement for the original Slingerserver and by default, it should work in the same way.
 
 The web player is in the file webplay.html, make sure it is in the same directory as the slingbox_server.py, and you need a python moddule rewrap.py (in the same directory).
 
@@ -51,7 +51,7 @@ Clicking on the video (even if not playing) will toggle remote control and video
 
 Double click will toggle fullscreen mode.
 
-Since video autoplay is finicky, you have to start it manually with the Play button (in the ugly control area at the bottom). This will take a while (watch the slingbox_server.py output for any problems, especially the first time). Clicking Play again will pause the video, and clicking it once more will resume playing. Note that this will increase the remote control lag accordingly. To go back to live streaming, click on the Stop button and then again on the Play/pause one. If you encounter problems (disconnect etc.), repeat the Stop and Play sequence.
+Since video autoplay is finicky, I opted for manual start with the Play button (in the ugly control area at the bottom). This will take a while (watch the slingbox_server.py output for any problems, especially the first time). Clicking Play again will pause the video, and clicking it once more will resume playing. Note that this will increase the remote control lag accordingly. To go back to live streaming, click on the Stop button and then again on the Play/pause one. If you encounter problems (disconnect etc.), repeat the Stop and Play sequence.
 
 You can also force a resolution or a bitrate, by appending '?resolution=N' or '?bitrate=N' to the URL.
 For example, to force resolution 320x240 and bitrate 500kbps, use `http://localhost:8080/webplay.html?slingbox_id=nameofyourslingbox&resolution=1&bitrate=500` (this will work only if there is no other stream playing). Or you can expand the `Opts` button and select the resolution and bitrate there (if playing, you have to Stop and Play the video to apply the changes).
@@ -97,7 +97,7 @@ Fortunately, there is enough time (10 seconds or so) between the points 4. and 5
 
 The modified slinger server is still backward compatible, you can use it the usual way, including Slinger player. You can also stream to several clients as usual.
 
-The remuxed stream in mp4 container is available at `http://localhost:8080/slingbox?remux=1` (replace `localhost`, port and `slingbox` with your values, if different from the default and/or running the server remotely). However, you can connect to the remuxed stream only once.
+The remuxed stream in mp4 container is available at `http://localhost:8080/slingbox?remux=1` (replace `localhost`, port and `slingbox` with your values, if different from the default and/or running the server remotely). You can connect to multiple streams, remuxed or not. Each remuxed stream will launch one `ffmpeg` process, because sharing a `mp4` header between streams is nontrivial (read: I was not able to implement it). Fortunately, `ffmpeg` muxing is cheap.
 
 These are the parameters you can use:
 
@@ -110,7 +110,7 @@ Anything else will be interpreted as the initial channel, for backward compatibi
 
 ## Notes
 
-What I intended to be a quick&dirty hack turned out to be more complicated and lead me through the rabbit hole of html5 `<video> quirks and limitations. 
+What I intended to be a quick&dirty hack turned out to be more complicated and lead me through the rabbit hole of html5 `<video>` tag quirks and limitations. 
 
 I had to modity the original `slingbox-server.py` somewhat more than I expected, and I had to put a lot of javascript to the web player to make it usable. The code is full of hacks and workarounds - it is not an elegant code, but at least it works for me.
 
