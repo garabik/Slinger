@@ -144,6 +144,20 @@ html, body {
   background-color: inherit;
 }
 
+#videocontrols details summary {
+  background-color: #333;
+  padding: 0.2em;
+}
+
+#videocontrols #cnt_gauge {
+  color: white;
+  background-color: #333;
+  border-radius: 0.3em;
+  padding: 0;
+  margin: 0.1em;
+  font-family: monospace;
+}
+
 #ir {
   color: white;
   background-color: gray;
@@ -163,6 +177,7 @@ html, body {
     <iframe id="remoteframe" src="Remote.html" frameborder="0"></iframe>
   </div>
   <div id="videocontrols">
+    <div id="cnt_gauge">no video</div>
     <button id="cnt_videoplay" onclick="videoPlayPause();">⏵ Play</button>
     <button id="cnt_videostop" onclick="videoStop();">⏹ Stop</button>
     <button id="cnt_fullscreen" onclick="toggleFullscreen();"><sup>⇱</sup><sub>⇲</sub> Fullscreen</button>
@@ -196,8 +211,7 @@ html, body {
   </div>
   <div id="videowrap" tabindex="-1" onclick="toggleRemoteAndControls();" ondblclick="toggleFullscreen();">
       <div id="videoaspect">
-        <video id="video" preload="none" > <!-- onclick="toggleRemote()" -->
-              <!--            <source id="videosource" src="none" type="video/mp4" /> -->
+        <video id="video" preload="none" onloadstart="videoProgress()" onstalled="videoProgress()" onsuspend="videoProgress()"  onpause="videoProgress()" onwaiting="videoProgress()" onplay="videoProgress()" onprogress="videoProgress()">
             Your browser does not support the video tag.
         </video>
       </div> <!-- videoaspect -->
@@ -330,6 +344,24 @@ function bodyLoad() {
     document.addEventListener('touchcancel', () => {
         isDragging = false;
     });
+};
+
+function videoProgress() {
+    const video = document.getElementById('video');
+    const progress_gauge = document.getElementById('cnt_gauge');
+    const state = video.readyState;
+    if (video.readyState >= 2) { // HAVE_CURRENT_DATA
+        const buffered = video.buffered;
+        if (buffered.length > 0) {
+            const bufferEnd = buffered.end(buffered.length - 1);
+            const secondsBuffered = bufferEnd - video.currentTime;
+            progress_gauge.innerHTML = `Buffered: ${secondsBuffered.toFixed(2)}`;
+        } else {
+            progress_gauge.innerHTML = "No buffered data";
+        }
+    } else {
+        progress_gauge.innerHTML = `Loading... state: ${state}`;
+    }
 };
 
 function videoPlayPause() {
@@ -515,6 +547,7 @@ function handleKey(event) {
 };
 
 document.getElementById('videowrap').addEventListener('keydown', handleKey);
+document.getElementById('videocontrols').addEventListener('keydown', handleKey);
 
 </script>
 
