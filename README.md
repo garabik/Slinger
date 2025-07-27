@@ -96,6 +96,7 @@ If your remote device is powered off and you need the remote to power it on, the
 
 Fortunately, there is enough time (10 seconds or so) between the points 4. and 5. where you can use the remote... If you miss the window, hit the Stop button and then Play and try again. However, even if you powered on the device, the player has already ingested some packets without the video track, and will hang (and then disconnect) again. So you will have to repeat the Stop and Play sequence again, or even reload the webpage, and then it should work. Unfortunately, there is no visual feedback.
 
+## Streaming
 
 The modified slinger server is still backward compatible, you can use it the usual way, including Slinger player. You can also stream to several clients as usual.
 
