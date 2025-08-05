@@ -49,6 +49,11 @@ keyMap.set('B',  77);
 const chup_code = 38; // ArrowUp
 const chdown_code = 39; // ArrowDown
 
+Object.defineProperty(HTMLMediaElement.prototype, 'playing', {
+    get: function(){
+         return !!(this.currentTime > 0 && !this.paused && !this.ended && this.readyState > 2);
+    }
+})
     </script>
 
     <style>
@@ -211,7 +216,7 @@ html, body {
   </div>
   <div id="videowrap" tabindex="-1" onclick="toggleRemoteAndControls();" ondblclick="toggleFullscreen();">
       <div id="videoaspect">
-        <video id="video" preload="none" onloadstart="videoProgress()" onstalled="videoProgress()" onsuspend="videoProgress()"  onpause="videoProgress()" onwaiting="videoProgress()" onplay="videoProgress()" onprogress="videoProgress()">
+        <video id="video" preload="none" onloadstart="videoProgress()" onpause="videoProgress()" onplay="videoProgress()" onprogress="videoProgress()">
             Your browser does not support the video tag.
         </video>
       </div> <!-- videoaspect -->
@@ -258,7 +263,7 @@ function popup(message) {
 
     setTimeout(() => {
         player.removeChild(popup);
-    }, 500);
+    }, 1000);
 }
 
 // stolen from https://stackoverflow.com/questions/62823062/adding-a-simple-left-right-swipe-gesture
@@ -291,7 +296,7 @@ function registerTouchEvent(element, callback) {
 function sizeRemote() {
     var fr = document.getElementById("remoteframe");
     var r_el = document.getElementById("remote");
-    if(fr.contentDocument) {
+    if (fr.contentDocument) {
         r_el.width = fr.contentDocument.documentElement.scrollWidth+30; //FF 3.0.11, Opera 9.63, and Chrome
     } else {
         r_el.width = fr.contentWindow.document.body.scrollWidth+30; //IE6, IE7 and Chrome
@@ -350,19 +355,38 @@ function videoProgress() {
     const video = document.getElementById('video');
     const progress_gauge = document.getElementById('cnt_gauge');
     const state = video.readyState;
+    const paused_str = video.paused ? "paused" : "";
+    const playing_str = video.playing ? "playing" : "";
+    const ended_str = video.ended ? "ended" : "";
+    progress_gauge.innerHTML = `state ${state} ${paused_str} ${ended_str} ${playing_str} time: ${video.currentTime.toFixed(2)}/${video.duration.toFixed(2)}s`;
     if (video.readyState >= 2) { // HAVE_CURRENT_DATA
         const buffered = video.buffered;
         if (buffered.length > 0) {
             const bufferEnd = buffered.end(buffered.length - 1);
             const secondsBuffered = bufferEnd - video.currentTime;
-            progress_gauge.innerHTML = `Buffered: ${secondsBuffered.toFixed(2)}`;
+            progress_gauge.innerHTML += ` buffered: ${secondsBuffered.toFixed(2)}`;
         } else {
-            progress_gauge.innerHTML = "No buffered data";
+            progress_gauge.innerHTML += "bo buffered data";
         }
     } else {
-        progress_gauge.innerHTML = `Loading... state: ${state}`;
+        progress_gauge.innerHTML += " loading";
     }
 };
+
+// tracks the timestamp of first unresolved playback error
+var videoErrTimestamp = null;
+
+function forceVideoStart() {
+    const video_random_id = Math.round(Math.random() * 1000000);
+    video.src = "/"+slingbox_id+"?remux=1&dummy=" + video_random_id;
+    if (forced_resolution) {
+        video.src += "&resolution=" + forced_resolution;
+    }
+    if (forced_bitrate) {
+        video.src += "&bitrate=" + forced_bitrate;
+    }
+    video.load(); // Load the new source
+}
 
 function videoPlayPause() {
     console.log("video play request");
@@ -371,38 +395,55 @@ function videoPlayPause() {
 
     if (!video.src || video.src === "") {
         console.log("Setting video source");
-        video.src = "/"+slingbox_id+"?remux=1&dummy=" + video_random_id;
-        if (forced_resolution) {
-            video.src += "&resolution=" + forced_resolution;
-        }
-        if (forced_bitrate) {
-            video.src += "&bitrate=" + forced_bitrate;
-        }
-        video.load(); // Load the new source
+        forceVideoStart();
     };
+
+    const button = document.getElementById('cnt_videoplay');
 
     if (video.paused) {
         popup("Play");
-        video.play().catch(error => {
-            console.error("Error playing video:", error);
-            popup("Error playing video");
-        });
-    } else {
+        playPromise = video.play();
+        if (playPromise !== undefined) {
+            playPromise.then(() => {
+                console.log("Video is playing");
+                videoProgress(); // Update progress gauge
+                videoErrTimestamp = null; // Reset error timestamp on successful play
+                button.innerHTML = "⏸  Pause";
+            }).catch(error => {
+                console.error("Error playing video:", error);
+                popup("Error playing video");
+            });
+        } else {
+            console.log("play promise undefined");
+        }
+    } else if (video.playing) {
         video.pause();
         popup("Paused");
     }
-    const button = document.getElementById('cnt_videoplay');
-    button.innerHTML = video.paused ? "⏵ Play" : "⏸ Pause";
+    if (video.paused || video.ended) {
+        button.innerHTML = "⏵ Play"
+    } else if (video.playing) {
+        button.innerHTML = "⏸ Pause";
+    } else {
+        button.innerHTML = "⌛ Play";
+    }
 };
+
+
+function forceVideoStop() {
+    let video = document.getElementById('video');
+    if (video.playing) {
+        video.pause();
+    }
+    video.src = "";
+    video.removeAttribute('src');
+    video.load(); // Load the video element to reset it
+}
 
 function videoStop() {
     console.log("video stop request");
     popup("Stop");
-    let video = document.getElementById('video');
-    video.pause();
-    video.src = "";
-    video.removeAttribute('src');
-    video.load(); // Load the video element to reset it
+    forceVideoStop();
     const button = document.getElementById('cnt_videoplay');
     button.innerHTML = "⏵ Play";
 };
@@ -477,16 +518,74 @@ function toggleAspect() {
     }
 };
 
+// this kind of works in firefox, but breaks things in chrome
+function goEnd() {
+    // test if the browser is something else than firefox
+    if (navigator.userAgent.indexOf('Firefox') == -1) {
+        return;
+    }
+    const video = document.getElementById('video');
+    const state = video.readyState;
+    if (video.readyState >= 2) { // HAVE_CURRENT_DATA
+        const buffered = video.buffered;
+        if (buffered.length > 0) {
+            const bufferEnd = buffered.end(buffered.length - 1);
+            const secondsBuffered = bufferEnd - video.currentTime;
+            if (secondsBuffered > 2) {
+                video.currentTime = bufferEnd-2;
+            }
+        }
+    }
+};
 
-// if there is an error playing the video, sleep 1 sec and try again
+
+function forceVideoRestart() {
+    console.log("Force video restart");
+    forceVideoStop();
+    // sleep 2 sec to let the video element reset
+    setTimeout(() => {
+        forceVideoStart();
+    }, 2000);
+}
+
 document.getElementById('video').addEventListener('error', function() {
-    //alert('Error playing video, retrying in 1 second...');
-    popup('Error playing, retrying...');
-    setTimeout(function() {
-      //  document.getElementById('video').load();
-        document.getElementById('video').play()
-    }, 1000);
+    // if video does not have src, ignore
+    if (!this.src || this.src === "") {
+        console.log("No video source, ignoring error");
+        return;
+    }
+    console.log(Date.now(), videoErrTimestamp);
+    if (videoErrTimestamp && (Date.now() - videoErrTimestamp > 10000)) {
+        popup('video err before 10s');
+        return;
+    }
+    if (videoErrTimestamp == null) {
+        videoErrTimestamp = Date.now();
+    }
+    popup('video error, retrying...');
+    forceVideoRestart();
 });
+
+document.getElementById('video').addEventListener('stalled', function() {
+    popup('video stalled...');
+});
+
+document.getElementById('video').addEventListener('waiting', function() {
+    popup('video waiting...');
+});
+
+let lastTime = 0;
+const video = document.getElementById('video');
+setInterval(() => {
+    if (video.playing) {
+        if (video.currentTime === lastTime) {
+            console.log("Playback appears stalled. Reconnecting...", lastTime, video.currentTime, video.readyState);
+            popup('Playback stalled, reconnecting...');
+            forceVideoRestart();
+        }
+    lastTime = video.currentTime;
+    }
+}, 5000);
 
 const irFlash = [
   { color: "red" },
@@ -524,6 +623,7 @@ function sendCode(buttonName, buttonValue) {
       }
     };
     xhr.send(dataString);
+    //goEnd();
 }
 
 
@@ -538,6 +638,11 @@ function handleKey(event) {
         return;
     }
 
+    // if in INPUT, return
+    if (event.target.tagName === 'INPUT') {
+        return;
+    }
+
     const name = 'fromKBD_'+event.keyCode ;
     if (keyMap.has(event.key)) {
         event.preventDefault();
@@ -546,8 +651,10 @@ function handleKey(event) {
     }
 };
 
+
 document.getElementById('videowrap').addEventListener('keydown', handleKey);
 document.getElementById('videocontrols').addEventListener('keydown', handleKey);
+
 
 </script>
 
