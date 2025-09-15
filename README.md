@@ -121,5 +121,10 @@ Since the original stream is in h264+aac, remuxing is cheap and won't take much 
 
 The latency is horrible - I used the standard tricks when remuxing the stream and pushing it to the client, but it still adds some latency, and on top of that web browser buffers the video quite a lot. Sigh...
 
+The web browser tends to buffer up to one whole keyframe, decreasing IframeRate in the `config.ini` helps, set it to 2 or 3 (setting it to 1 produces choppy video): `IframeRate=2`.
+
+Chrome (and derivatives) sometimes (often) lose audio sync, it might be related to this: https://issues.chromium.org/issues/404464587
+(although seems to be different and not fixed). Use Firefox if you have this problem.
+
 This has been tested only with Slingbox Pro HD, on Chromium and Firefox on Linux (Opera on Linux does not work, known bug in linking with ffmpeg), and on Opera and Chrome on Android.
 

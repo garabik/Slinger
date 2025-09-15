@@ -21,7 +21,7 @@ from urllib.parse import urlparse, parse_qs
 
 import rewrapper
 
-version='4.02-remux'
+version='4.04-remux'
 
 def safe_int(s, default=0):
     """Convert string to int, return default if conversion fails."""
@@ -207,7 +207,7 @@ def find_max_buffer_size( opt ):
     return size         
         
 
-def sure_sendall(sock, data, timeout=30):
+def sure_sendall(sock, data, timeout=10):
     # Ensure that all data is sent, even if the socket is non-blocking and raises an Exception
 
     end_time = time.time() + timeout
@@ -461,7 +461,7 @@ def streamer(maxstreams, config_fn, forced_params, section_name, box_name, strea
                     elif not ( Solo and source == 0):
                         print( name, 'Warning: No remote keys configured, using correct VideoSource?')
             except:
-                Print('Error retreiving Keycodes. If this error persists consider rebooting your slingbox')
+                print('Error retreiving Keycodes. If this error persists consider rebooting your slingbox')
                 return (s_ctl,None)
                     
             
@@ -598,9 +598,8 @@ def streamer(maxstreams, config_fn, forced_params, section_name, box_name, strea
 
     ################## START of Streamer Execution
     print('Streamer Running: ', maxstreams, config_fn, section_name, box_name, server_port, max_recv_tcp_buffer)
-    OK = b'HTTP/1.0 200 OK\r\nContent-type: application/octet-stream\r\nCache-Control: no-cache\r\nConnection: keep-alive\r\n\r\n'
-    OK = b'HTTP/1.0 200 OK\r\nContent-type: video/mp4\r\nCache-Control: no-cache\r\nConnection: keep-alive\r\n\r\n'
-
+    # without (fake) 'Accept-ranges: bytes', no seeking within buffered video will be possible in chrome based browsers
+    OK = b'HTTP/1.0 200 OK\r\nContent-type: video/mp4\r\nCache-Control: no-cache\r\nConnection: keep-alive\r\nAccept-Ranges: bytes\r\n\r\n'
 
     ERROR =b'HTTP/1.0 503 ERROR\r\nContent-type: application/octet-stream\r\nCache-Control: no-cache\r\nConnection: close\r\n\r\n'
     stream_clients = {}
@@ -914,6 +913,8 @@ def streamer(maxstreams, config_fn, forced_params, section_name, box_name, strea
             stream.settimeout(15)
             tick = lasttick = laststatus = lastkeepalive = last_remote_command_time = startchanneltime = time.time()
             if not Solo : StartChannel = send_start_channel(StartChannel, rccode)
+            speed_timestamp = time.time()
+            cum_msg_len = 0
             while streams:
                 msg = readnbytes(stream, pksize)
                 if Solo and len(msg) > 0: 
@@ -943,9 +944,18 @@ def streamer(maxstreams, config_fn, forced_params, section_name, box_name, strea
                             msg_remuxed = remux_video_stream(do_remux_wrapper, msg)
                             if msg_remuxed:
                                 sure_sendall(stream_socket, msg_remuxed)
+                                cum_msg_len += len(msg_remuxed)
                         else:
                             if msg:
                                 sure_sendall(stream_socket, msg)
+                                cum_msg_len += len(msg)
+                        timedelta = time.time() - speed_timestamp
+                        if timedelta > 10: # averaged over 10s
+                            speed_timestamp = time.time()
+                            speed_raw = cum_msg_len / timedelta
+                            cum_msg_len = 0
+                            speed = int(8*speed_raw/1024)
+                            print('streaming speed', speed, 'kbps', end='        \r')
                     except Exception as e:
                         if stream_socket in stream_clients.keys():
                             print(ts(), name, 'Stream Terminated for ', stream_clients[stream_socket])
@@ -980,9 +990,9 @@ def streamer(maxstreams, config_fn, forced_params, section_name, box_name, strea
                             stream_clients[new_stream], channel = parse_stream(data)
                             do_remux_wrapper = remux_connections.get(new_stream, False)
                             if do_remux_wrapper:# and stream_header_remuxed:
-                                print('sending remuxed header')
                                 stream_header_remuxed = remux_video_stream(do_remux_wrapper, stream_header) # will return most likely b''
                                 if stream_header_remuxed:
+                                    print('sending remuxed header', len(stream_header_remuxed))
                                     sure_sendall(new_stream, stream_header_remuxed)
                             elif stream_header:
                                 print('sending header')
@@ -1602,7 +1612,7 @@ table {
   margin-top: 1ex;
   margin-bottom: 1ex;
   border-collapse:collapse;
-  background-color:#bbb;
+  background-color: rgba(176, 176, 176, 0.3);
   border-radius:0.5em;
 }
 
@@ -1632,7 +1642,7 @@ table {
 
 <table>
   <tr>
-  <td><button class="button buttonred" type="submit" value="1"  name="power" >⦿</button></td>
+  <td><button class="button buttonred" type="submit" value="1"  name="power" >O</button></td>
   <td><button class="button squeeze" type="submit" value="8" name="mute"             >MUTE</button></td>
   <td><span id="ir">⇈ </span></td><!-- to signal IR code is being sent -->
   </tr>

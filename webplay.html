@@ -154,7 +154,7 @@ html, body {
   padding: 0.2em;
 }
 
-#videocontrols #cnt_gauge {
+#videocontrols #cnt_status_bar {
   color: white;
   background-color: #333;
   border-radius: 0.3em;
@@ -182,9 +182,11 @@ html, body {
     <iframe id="remoteframe" src="Remote.html" frameborder="0"></iframe>
   </div>
   <div id="videocontrols">
-    <div id="cnt_gauge">no video</div>
+    <div id="cnt_status_bar"><span id="cnt_status">no video</span><span id="currentTimeMarker"></span></div>
     <button id="cnt_videoplay" onclick="videoPlayPause();">⏵ Play</button>
     <button id="cnt_videostop" onclick="videoStop();">⏹ Stop</button>
+    <button id="cnt_rewind" onclick="videoRewind();">-10</button>
+    <button id="cnt_ff" onclick="videoFF();">+10</button>
     <button id="cnt_fullscreen" onclick="toggleFullscreen();"><sup>⇱</sup><sub>⇲</sub> Fullscreen</button>
     <button id="cnt_remotebutton" onclick="toggleRemote();">&#x1F3AE; Remote</button>
     <button id="cnt_mute" onclick=toggleMute();>&#x1F507; Mute</button>
@@ -216,7 +218,7 @@ html, body {
   </div>
   <div id="videowrap" tabindex="-1" onclick="toggleRemoteAndControls();" ondblclick="toggleFullscreen();">
       <div id="videoaspect">
-        <video id="video" preload="none" onloadstart="videoProgress()" onpause="videoProgress()" onplay="videoProgress()" onprogress="videoProgress()">
+        <video id="video" preload="none" onloadstart="videoStatusBar()" onpause="videoStatusBar()" onplay="videoStatusBar()" onprogress="videoProgress()">
             Your browser does not support the video tag.
         </video>
       </div> <!-- videoaspect -->
@@ -225,22 +227,25 @@ html, body {
 
 <script>
 
+const video = document.getElementById('video');
+
 var slingbox_id = 'slingbox';
 const queryString = window.location.search;
-console.log("QS "+queryString);
+
 const urlParams = new URLSearchParams(queryString);
 if (urlParams.has('slingbox_id')) {
     slingbox_id = urlParams.get('slingbox_id');
 };
+
 var forced_resolution = null;
 var forced_bitrate = null;
+
 if (urlParams.has('resolution')) {
     forced_resolution = urlParams.get('resolution');
 };
 if (urlParams.has('bitrate')) {
     forced_bitrate = urlParams.get('bitrate');
 };
-
 
 // keep track if we are changing volume by dragging a finger
 var isDragging = false;
@@ -351,46 +356,156 @@ function bodyLoad() {
     });
 };
 
-function videoProgress() {
+function getSeekableEnd(v) {
+    const r = v.seekable;
+    if (r && r.length && r.end(r.length - 1)>0) {
+        // chrome will have 0 as the seekable end and cannot seek
+        // for firefox, v.seekable will be the same as v.buffered, but we'll use buffered just in case
+        const b = v.buffered;
+        return (b && b.length) ? b.end(b.length - 1) : NaN;
+    };
+    return NaN;
+};
+
+function chaseLiveEdge(v) {
+    const EDGE_DIST = 3.0; // seconds
+    const EDGE_DIST_MAX = 6.0; // at this distance, playback rate is maxed
+    const MAX_PLAYBACK_RATE = 1.1;
+    playbackRate = 1.0;
+
+    edge = getSeekableEnd(v);
+
+    if (!Number.isFinite(edge) || edge <= 0 || !Number.isFinite(v.currentTime)) {
+        playbackRate = 1.0;
+        v.playbackRate = playbackRate;
+        console.log('PR', v.playbackRate, 'duration', v.duration, 'currentTime', v.currentTime);
+        return;
+    }
+    const latency = edge - v.currentTime;
+    if (latency < EDGE_DIST) {
+        playbackRate = 1.0;
+    } else {
+        speedup = (latency - EDGE_DIST) / (EDGE_DIST_MAX - EDGE_DIST);
+        playbackRate = 1.0 + speedup * (MAX_PLAYBACK_RATE - 1.0);
+    }
+    v.playbackRate = playbackRate;
+    console.log('PR', v.playbackRate)
+}
+
+function videoStatusBar() {
     const video = document.getElementById('video');
-    const progress_gauge = document.getElementById('cnt_gauge');
+    const progress_status = document.getElementById('cnt_status');
     const state = video.readyState;
     const paused_str = video.paused ? "paused" : "";
     const playing_str = video.playing ? "playing" : "";
     const ended_str = video.ended ? "ended" : "";
-    progress_gauge.innerHTML = `state ${state} ${paused_str} ${ended_str} ${playing_str} time: ${video.currentTime.toFixed(2)}/${video.duration.toFixed(2)}s`;
-    if (video.readyState >= 2) { // HAVE_CURRENT_DATA
-        const buffered = video.buffered;
-        if (buffered.length > 0) {
-            const bufferEnd = buffered.end(buffered.length - 1);
-            const secondsBuffered = bufferEnd - video.currentTime;
-            progress_gauge.innerHTML += ` buffered: ${secondsBuffered.toFixed(2)}`;
-        } else {
-            progress_gauge.innerHTML += "bo buffered data";
-        }
+    const nosrc = !video.src || video.src === "" ? "no source" : "";
+    edge = getSeekableEnd(video);
+    if (!Number.isFinite(edge)) {
+        edge = video.duration;
+    };
+    const latency = edge - video.currentTime;
+    let case_str = "???";
+    switch (state) {
+        case 0:
+            state_str = "NOTHING";
+            break;
+        case 1:
+            state_str = "METADATA";
+            break;
+        case 2:
+            state_str = "CURRENT_DATA";
+            break;
+        case 3:
+            state_str = "FUTURE_DATA";
+            break;
+        case 4:
+            state_str = "ENOUGH_DATA";
+            break;
+    };
+    progress_status.innerHTML = `state: ${state_str} ${nosrc} ${paused_str} ${ended_str} ${playing_str} time: ${video.currentTime.toFixed(2)}/${video.duration.toFixed(2)}s latency: ${latency.toFixed(2)}s`;
+
+    if (video.buffered && video.buffered.length) {
+        buffered_start = video.buffered.start(video.buffered.length - 1);
+        // buffered end is the edge
+        // put a marker in the progress_status div corresponding to the current time
+        const buffered_pos = video.currentTime / (edge - buffered_start); // between 0 and 1
+        const marker_pos = Math.min(Math.max(buffered_pos, 0), 1) * 100;
+        const marker = document.getElementById('currentTimeMarker');
+        if (marker) {
+            marker.style.position = 'absolute';
+            marker.style.left = marker_pos + '%';
+            marker.style.color = 'white';
+            marker.style.textShadow = '0.2em 0.2em 0.4em black';
+            marker.innerHTML = '⬆';
+        };
     } else {
-        progress_gauge.innerHTML += " loading";
+        const marker = document.getElementById('currentTimeMarker');
+        if (marker) {
+            marker.innerHTML = '';
+        };
+    };
+};
+
+function videoProgress() {
+   const video = document.getElementById('video');
+   //chaseLiveEdge(video);
+};
+
+
+function videoRewind() {
+    const v = document.getElementById('video');
+    const state = v.readyState;
+    if (!v.src || !v.seekable || v.seekable.length === 0)  {
+        popup("Not seekable");
+        return;
+    }
+    if (v.readyState >= 2) { // HAVE_CURRENT_DATA
+        seekableend = getSeekableEnd(v);
+        if (!seekableend) {
+            popup("No seekable end");
+            return;
+        }
+        v.currentTime = Math.max(v.currentTime - 10, 0);
+        popup("-10s");
     }
 };
 
-// tracks the timestamp of first unresolved playback error
-var videoErrTimestamp = null;
+function videoFF() {
+    const v = document.getElementById('video');
+    const state = v.readyState;
+    if (!v.src ||  !v.seekable || v.seekable.length === 0) {
+        popup("Not seekable");
+        return;
+    }
+    if (v.readyState >= 2) { // HAVE_CURRENT_DATA
+        seekableend = getSeekableEnd(v);
+        if (!seekableend) {
+            popup("No seekable end");
+            return;
+        }
+        v.currentTime = Math.min(v.currentTime + 10, seekableend);
+        popup("+10s");
+    }
+};
+
+// tracks the timestamp of video errors
+var videoErrTimestamp = 0;
 
 function forceVideoStart() {
-    const video_random_id = Math.round(Math.random() * 1000000);
-    video.src = "/"+slingbox_id+"?remux=1&dummy=" + video_random_id;
+    video.src = "/"+slingbox_id+"?remux=1";
     if (forced_resolution) {
         video.src += "&resolution=" + forced_resolution;
     }
     if (forced_bitrate) {
         video.src += "&bitrate=" + forced_bitrate;
     }
-    video.load(); // Load the new source
+    video.load();
+    videoStatusBar();
 }
 
 function videoPlayPause() {
     console.log("video play request");
-    let video_random_id = Math.round(Math.random() * 1000000);
     const video = document.getElementById('video');
 
     if (!video.src || video.src === "") {
@@ -406,8 +521,7 @@ function videoPlayPause() {
         if (playPromise !== undefined) {
             playPromise.then(() => {
                 console.log("Video is playing");
-                videoProgress(); // Update progress gauge
-                videoErrTimestamp = null; // Reset error timestamp on successful play
+                videoStatusBar();
                 button.innerHTML = "⏸  Pause";
             }).catch(error => {
                 console.error("Error playing video:", error);
@@ -424,6 +538,8 @@ function videoPlayPause() {
         button.innerHTML = "⏵ Play"
     } else if (video.playing) {
         button.innerHTML = "⏸ Pause";
+    } else if (video.paused && video.ended) {
+        button.innerHTML = "⚠ Err";
     } else {
         button.innerHTML = "⌛ Play";
     }
@@ -431,13 +547,21 @@ function videoPlayPause() {
 
 
 function forceVideoStop() {
-    let video = document.getElementById('video');
+    const video = document.getElementById('video');
     if (video.playing) {
         video.pause();
     }
-    video.src = "";
-    video.removeAttribute('src');
-    video.load(); // Load the video element to reset it
+    setTimeout(() => {
+        if (video.src) {
+            video.src = "";
+        }
+        video.removeAttribute('src');
+    }, 100);
+    setTimeout(() => {
+        if (!video.src || video.src === "") {
+            video.load();
+        }
+    }, 200);
 }
 
 function videoStop() {
@@ -446,6 +570,7 @@ function videoStop() {
     forceVideoStop();
     const button = document.getElementById('cnt_videoplay');
     button.innerHTML = "⏵ Play";
+    videoStatusBar();
 };
 
 function toggleRemote() {
@@ -474,7 +599,6 @@ function toggleRemoteAndControls() {
 
 function toggleMute() {
     popup("Toggle mute");
-    var video = document.getElementById('video');
     if (video.muted) {
         video.muted = false;
     } else {
@@ -518,53 +642,45 @@ function toggleAspect() {
     }
 };
 
-// this kind of works in firefox, but breaks things in chrome
 function goEnd() {
-    // test if the browser is something else than firefox
-    if (navigator.userAgent.indexOf('Firefox') == -1) {
-        return;
-    }
-    const video = document.getElementById('video');
-    const state = video.readyState;
-    if (video.readyState >= 2) { // HAVE_CURRENT_DATA
-        const buffered = video.buffered;
-        if (buffered.length > 0) {
-            const bufferEnd = buffered.end(buffered.length - 1);
-            const secondsBuffered = bufferEnd - video.currentTime;
-            if (secondsBuffered > 2) {
-                video.currentTime = bufferEnd-2;
-            }
+    const v = document.getElementById('video');
+    const state = v.readyState;
+    if (v.readyState >= 2) { // HAVE_CURRENT_DATA
+        seekableend = getSeekableEnd(v);
+        if (seekableend && seekableend > 2) {
+            v.currentTime = seekableend - 2; // go to the end of the video, but leave 2 seconds for buffering
+            console.log("Seeking to end of video at", v.currentTime);
         }
     }
 };
 
-
 function forceVideoRestart() {
     console.log("Force video restart");
+    popup('Restarting video...');
     forceVideoStop();
-    // sleep 2 sec to let the video element reset
+    // sleep some time to let the video element reset
     setTimeout(() => {
         forceVideoStart();
-    }, 2000);
+    }, 500);
 }
 
+/*
 document.getElementById('video').addEventListener('error', function() {
     // if video does not have src, ignore
     if (!this.src || this.src === "") {
         console.log("No video source, ignoring error");
         return;
-    }
-    console.log(Date.now(), videoErrTimestamp);
-    if (videoErrTimestamp && (Date.now() - videoErrTimestamp > 10000)) {
-        popup('video err before 10s');
+    };
+    console.log('video ERR',Date.now(), videoErrTimestamp);
+    if (videoErrTimestamp && (Date.now() - videoErrTimestamp < 5000)) {
+        popup('error too soon, stop&start manually');
         return;
-    }
-    if (videoErrTimestamp == null) {
-        videoErrTimestamp = Date.now();
-    }
+    };
+    videoErrTimestamp = Date.now();
     popup('video error, retrying...');
     forceVideoRestart();
 });
+*/
 
 document.getElementById('video').addEventListener('stalled', function() {
     popup('video stalled...');
@@ -574,18 +690,19 @@ document.getElementById('video').addEventListener('waiting', function() {
     popup('video waiting...');
 });
 
-let lastTime = 0;
-const video = document.getElementById('video');
 setInterval(() => {
-    if (video.playing) {
-        if (video.currentTime === lastTime) {
-            console.log("Playback appears stalled. Reconnecting...", lastTime, video.currentTime, video.readyState);
-            popup('Playback stalled, reconnecting...');
-            forceVideoRestart();
-        }
-    lastTime = video.currentTime;
+    videoStatusBar();
+    // if video has src, is paused and ended, restart
+
+    /* commented out, does not work reliably
+    if (video.src && video.paused && video.ended && (Date.now() - videoErrTimestamp > 4000)) {
+        console.log("Video is paused and ended, restarting...");
+        popup('restarting video...');
+        forceVideoRestart(); 
+        videoErrTimestamp = Date.now();
     }
-}, 5000);
+    */
+}, 1000);
 
 const irFlash = [
   { color: "red" },
@@ -599,6 +716,7 @@ const irFlashTiming = {
 
 
 function sendCode(buttonName, buttonValue) {
+    goEnd();
     popup('IR '+buttonValue);
     const dataString = encodeURIComponent(buttonName) + '=' + encodeURIComponent(buttonValue);
     const xhr = new XMLHttpRequest(); // Create XHR object
@@ -619,13 +737,11 @@ function sendCode(buttonName, buttonValue) {
             }
       } else {
         console.error('Error submitting:', xhr.statusText);
-        popup('IR control err');
+        popup('IR error');
       }
     };
     xhr.send(dataString);
-    //goEnd();
 }
-
 
 
 function handleKey(event) {

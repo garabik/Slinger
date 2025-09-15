@@ -14,6 +14,14 @@ class Mp4Rewrapper:
             .input('pipe:0',
                    format="asf",
                    sample_fmt='fltp',
+                   flags='low_delay',
+                   fflags="nobuffer+discardcorrupt+flush_packets",
+                   frame_drop_threshold=1,
+#                   fps_mode='cfr',
+                   vsync='vfr',
+                   copyts=None,
+
+#                   fflags="nobuffer+flush_packets",
                    )
            .output('pipe:1',
                     format='mp4',
@@ -23,15 +31,20 @@ class Mp4Rewrapper:
                     # drop_pkts_on_overflow=True,
                     # attempt_recovery=True,
                     fflags='nobuffer+genpts+discardcorrupt+flush_packets',
-                    #fflags='nobuffer+discardcorrupt+flush_packets',
+#                    fflags='nobuffer+genpts+flush_packets',
+
+
                     flags='+global_header+low_delay',
                     probesize=32,
                     analyzeduration=0,
-                    frag_duration = 300000,
-                    movflags='frag_keyframe+empty_moov+default_base_moof+separate_moof',
+                    frag_duration = 100000,
+                    movflags='+empty_moov+default_base_moof+separate_moof+omit_tfhd_offset',
+                    flush_packets=1,
+                    max_interleave_delta=200000,
+                    loglevel=24,
 #                    absf='aac_adtstoasc',
                     )
-            .run_async(quiet=True, pipe_stdin=True, pipe_stdout=True)#, pipe_stderr=True)
+            .run_async(quiet=False, pipe_stdin=True, pipe_stdout=True)#, pipe_stderr=True)
         )
         self.lock = threading.Lock()  # make thread-safe if you want to write/read from multiple threads
         os.set_blocking(self.proc.stdout.fileno(), False)
