@@ -1481,32 +1481,6 @@ def BuildPage(cp, section_name):
 </body>
 </html>
 '''
-    default_style='''style=
-.button {
-  box-shadow: 0.5em 0.5em 1em 0px #222;
-  background:linear-gradient(to bottom, #999 5%, #222 100%);
-  background-color:#555;
-  border-radius:1.25em 1.25em 1.25em 1.25em;
-  min-width: 2.5em;
-  max-width: 6.5em;
-  height: 2.5em;
-  border:1px solid #999;
-  display:block;
-  margin: auto;
-  margin-top: 0.4ex;
-  margin-bottom: 0.4ex;
-  cursor:pointer;
-  color:white;
-  font-family:sans;
-  font-weight:bold;
-  text-decoration:none;
-  text-shadow:0px 1px 0px #58c;
-  text-align: center;
-  display: inline;
-}
-
-
-'''
     default_remote_html = '''<!DOCTYPE html>
 <html>
 <head>
