@@ -182,7 +182,7 @@ html, body {
     <iframe id="remoteframe" src="Remote.html" frameborder="0"></iframe>
   </div>
   <div id="videocontrols">
-    <div id="cnt_status_bar"><span id="cnt_status">no video</span><span id="currentTimeMarker"></span></div>
+    <div id="cnt_status_bar" onclick="videoRewindTo();"><span id="cnt_status">no video</span><span id="currentTimeMarker"></span></div>
     <button id="cnt_videoplay" onclick="videoPlayPause();">⏵ Play</button>
     <button id="cnt_videostop" onclick="videoStop();">⏹ Stop</button>
     <button id="cnt_rewind" onclick="videoRewind();">-10</button>
@@ -468,6 +468,32 @@ function videoRewind() {
         }
         v.currentTime = Math.max(v.currentTime - 10, 0);
         popup("-10s");
+    }
+};
+
+// clicking on status bar rewinds video to that point
+function videoRewindTo() {
+    const v = document.getElementById('video');
+    const state = v.readyState;
+    if (!v.src || !v.seekable || v.seekable.length === 0)  {
+        popup("Not seekable");
+        return;
+    }
+    if (v.readyState >= 2) { // HAVE_CURRENT_DATA
+        seekableend = getSeekableEnd(v);
+        if (!seekableend) {
+            popup("No seekable end");
+            return;
+        }
+        const progress_status = document.getElementById('cnt_status_bar');
+        const rect = progress_status.getBoundingClientRect();
+        const clickX = event.clientX - rect.left; // X coordinate within the element
+        const width = rect.width;
+        const clickRatio = clickX / width; // between 0 and 1
+        const buffered_start = v.buffered && v.buffered.length ? v.buffered.start(v.buffered.length - 1) : 0;
+        const newTime = buffered_start + clickRatio * (seekableend - buffered_start);
+        v.currentTime = Math.min(Math.max(newTime, 0), seekableend);
+        popup(`seek to ${v.currentTime.toFixed(1)}s`);
     }
 };
 
