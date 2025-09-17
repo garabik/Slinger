@@ -598,8 +598,8 @@ def streamer(maxstreams, config_fn, forced_params, section_name, box_name, strea
 
     ################## START of Streamer Execution
     print('Streamer Running: ', maxstreams, config_fn, section_name, box_name, server_port, max_recv_tcp_buffer)
-    # without (fake) 'Accept-ranges: bytes', no seeking within buffered video will be possible in chrome based browsers
-    OK = b'HTTP/1.0 200 OK\r\nContent-type: video/mp4\r\nCache-Control: no-cache\r\nConnection: keep-alive\r\nAccept-Ranges: bytes\r\n\r\n'
+    OK = b'HTTP/1.0 200 OK\r\nContent-type: video/mp4\r\nCache-Control: no-cache\r\nConnection: keep-alive\r\n\r\n'
+
 
     ERROR =b'HTTP/1.0 503 ERROR\r\nContent-type: application/octet-stream\r\nCache-Control: no-cache\r\nConnection: close\r\n\r\n'
     stream_clients = {}
@@ -920,8 +920,6 @@ def streamer(maxstreams, config_fn, forced_params, section_name, box_name, strea
                 if Solo and len(msg) > 0: 
                     try:
                         msg = process_solo_msg( msg, stream )
-                        if not msg:
-                            continue
                     except Exception as e:
                         print(name, 'Error Processing Solo Message. Stopping', e, traceback.print_exc())
                         break
@@ -1268,8 +1266,7 @@ def ConnectionManager(config_fn):
 #                print('1stline', data_1stline_lower)
             except:
  #               print('bad data')
-                data = 'Bad Request' 
-            
+                data = 'Bad Request'
             if 'GET' in data and 'HTTP' in data \
                  and not ('/remote' in data_1stline_lower or '/webplay' in data_1stline_lower or 'favicon.ico' in data_1stline_lower or '.php' in data_1stline_lower or '.html' in data_1stline_lower):
                 start_uri = data.find('GET') + 3
