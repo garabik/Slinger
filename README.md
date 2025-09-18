@@ -126,5 +126,8 @@ The web browser tends to buffer up to one whole keyframe, decreasing IframeRate 
 Chrome (and derivatives) sometimes (often) lose audio sync, it might be related to this: https://issues.chromium.org/issues/404464587
 (although seems to be different and not fixed). Use Firefox if you have this problem.
 
-This has been tested only with Slingbox Pro HD, on Chromium and Firefox on Linux (Opera on Linux does not work, known bug in linking with ffmpeg), and on Opera and Chrome on Android.
+There are buttons for rewind/fast forward by ±10 sesconds, and the status bar doubles as a video buffer indicator, with a pointer for the current position. Clicking on the status bar will rewind the video to that position (within the buffered data). This works only in Firefox, not Chrome. And if you rewind too far, for too long (minutes), the browser will stop reading new data, they will remain in memory buffers and eventually time out and the connection will drop.
+
+
+This has been tested only with Slingbox Pro HD, on Chromium and Firefox on Linux (Opera on Linux does not work, known bug in linking with ffmpeg), and on Firefox, Opera and Chrome on Android. I recommend using Firefox, if nothing else, for the audio syncing problems in Chrome.
 
