@@ -673,8 +673,12 @@ function goEnd() {
     const state = v.readyState;
     if (v.readyState >= 2) { // HAVE_CURRENT_DATA
         seekableend = getSeekableEnd(v);
-        if (seekableend && seekableend > 2) {
-            v.currentTime = seekableend - 2; // go to the end of the video, but leave 2 seconds for buffering
+        if (seekableend && seekableend > 2 && v.currentTime < seekableend - 2.5) {
+            /* go to the end of the video, but leave some time for buffering
+              empirically found out that 2s causes some slight stuttering in Firefox sometimes
+              but slightly bigger value is OK
+            */
+            v.currentTime = seekableend - 2.3;
             console.log("Seeking to end of video at", v.currentTime);
         }
     }
