@@ -51,9 +51,9 @@ Clicking on the video (even if not playing) will toggle remote control and video
 
 Double click will toggle fullscreen mode.
 
-Since video autoplay is finicky, I opted for manual start with the Play button (in the ugly control area at the bottom). This will take a while (watch the slingbox_server.py output for any problems, especially the first time). Clicking Play again will pause the video, and clicking it once more will resume playing. Note that this will increase the remote control lag accordingly. To go back to live streaming, click on the Stop button and then again on the Play/pause one. If you encounter problems (disconnect etc.), repeat the Stop and Play sequence.
+Since video autoplay is finicky, I opted for manual start with the Play button (in the ugly control area at the bottom). This will take a while (watch the `slingbox_server.py` output for any problems, especially the first time). Clicking Play again will pause the video, and clicking it once more will resume playing. Note that this will increase the remote control lag accordingly. To go back to live streaming, either click on the right edge of the buffer bar, and/or several times at the `+10` button. Or click the Stop button and then again on the Play/pause one. If you encounter problems (disconnect etc.), repeat the Stop and Play sequence.
 
-You can also force a resolution or a bitrate, by appending '?resolution=N' or '?bitrate=N' to the URL.
+You can also force a resolution or a bitrate, by appending `?resolution=N` or `?bitrate=N` to the URL.
 For example, to force resolution 320x240 and bitrate 500kbps, use `http://localhost:8080/webplay.html?slingbox_id=nameofyourslingbox&resolution=1&bitrate=500` (this will work only if there is no other stream playing). Or you can expand the `Opts` button and select the resolution and bitrate there (if playing, you have to Stop and Play the video to apply the changes).
 
 
