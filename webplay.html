@@ -168,6 +168,7 @@ html, body {
   background-color: gray;
   border-radius: 0.3em;
   position: absolute;
+  left: 1em;
   display: none;
 }
 
@@ -187,13 +188,13 @@ html, body {
     <button id="cnt_videostop" onclick="videoStop();">⏹ Stop</button>
     <button id="cnt_rewind" onclick="videoRewind();">-10</button>
     <button id="cnt_ff" onclick="videoFF();">+10</button>
-    <button id="cnt_fullscreen" onclick="toggleFullscreen();"><sup>⇱</sup><sub>⇲</sub> Fullscreen</button>
+    <button id="cnt_fullscreen" onclick="toggleFullscreen();"><sup>⇱</sup><sub>⇲</sub> FullScr</button>
     <button id="cnt_remotebutton" onclick="toggleRemote();">&#x1F3AE; Remote</button>
     <button id="cnt_mute" onclick=toggleMute();>&#x1F507; Mute</button>
     <button id="cnt_aspect" onclick="toggleAspect();">16/9</button>
     <details id="cnt_details">
-      <summary>Opts</summary>
-    Res:<select id="cnt_resolution" onchange="forced_resolution = this.value;">
+    <summary>Opts</summary>
+        Res:<select id="cnt_resolution" onchange="forced_resolution = this.value;">
         <option value="" selected>default</option>
         <option value="5">640x480</option>
         <option value="6">640x240</option>
@@ -213,7 +214,7 @@ html, body {
         <option value="16">1920x1080</option>
       </select>
 
-    Bitrate:<input type="text" id="cnt_bitrate" min="0" max="3000" style="width: 6em;" oninput="forced_bitrate = this.value;">kbps
+      Bitrate:<input type="text" id="cnt_bitrate" min="0" max="3000" style="width: 6em;" oninput="forced_bitrate = this.value;">kbps
     </details>
   </div>
   <div id="videowrap" tabindex="-1" onclick="toggleRemoteAndControls();" ondblclick="toggleFullscreen();">
@@ -271,6 +272,31 @@ function popup(message) {
     }, 1000);
 }
 
+// visual effects, video screen wiggles to the left or right
+function scrRollLeft() {
+    const videowrap = document.getElementById('videowrap');
+    videowrap.animate([
+        { transform: 'translateX(0px)' },
+        { transform: 'translateX(-90vw)' },
+        { transform: 'translateX(0px)' }
+    ], {
+        duration: 1000,
+        iterations: 1
+    });
+}
+
+function scrRollRight() {
+    const videowrap = document.getElementById('videowrap');
+    videowrap.animate([
+        { transform: 'translateX(0px)' },
+        { transform: 'translateX(90vw)' },
+        { transform: 'translateX(0px)' }
+    ], {
+        duration: 1000,
+        iterations: 1
+    });
+}
+
 // stolen from https://stackoverflow.com/questions/62823062/adding-a-simple-left-right-swipe-gesture
 function registerTouchEvent(element, callback) {
   const THRESHOLD = 50 // Minimum difference in pixels at which a swipe gesture is detected
@@ -316,8 +342,10 @@ function swipeHandler(direction, startEvent, endEvent) {
     }
 
     if (direction === 'up' || direction === 'right') {
+        scrRollRight();
         sendCode('fromSwipe_up', chup_code); // ArrowUp
     } else if (direction === 'down' || direction === 'left') {
+        scrRollLeft();
         sendCode('fromSwipe_down', chdown_code); // ArrowDown
 //    } else if (direction === 'click') {
 //        toggleRemoteAndControls();
