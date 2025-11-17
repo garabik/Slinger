@@ -7,6 +7,7 @@ import time
 import select
 import queue
 import re
+import html
 import subprocess
 from threading import Thread, get_ident
 import platform
@@ -21,7 +22,22 @@ from urllib.parse import urlparse, parse_qs
 
 import rewrapper
 
-version='4.04-remux'
+version='4.05-remux'
+
+# wrap print function to keep the last 10 lines in an internal buffer
+original_print = print
+def print(*args, **kwargs):
+    original_print(*args, **kwargs)
+    if 'file' in kwargs and kwargs['file'] is not sys.stdout:
+        pass
+    else:
+        s = ' '.join(str(arg) for arg in args)
+        print.buffer.append(s)
+        if len(print.buffer) > 10:
+            del print.buffer[0]
+    return
+print.buffer = []
+
 
 def safe_int(s, default=0):
     """Convert string to int, return default if conversion fails."""
@@ -86,7 +102,7 @@ def Decrypt( data, key ):
 
 def ts(res=-3):
     return '%s ' % datetime.datetime.now().strftime("%m/%d/%Y, %H:%M:%S.%f").rstrip('0')[:res]
-    
+
 def pbuf(s):
     s = ''.join('{:02x} '.format(x) for x in s).upper()
     cnt = 0
@@ -97,7 +113,7 @@ def pbuf(s):
         out = out + "%06d " % (cnt,) + ss + '\r\n'
         cnt += 16
     return out
-    
+
 productIdDict ={
         "UNKNOWN": "Slingbox",
         0: "Classic",
@@ -226,18 +242,18 @@ def sure_sendall(sock, data, timeout=10):
             break
 
 def remux_video_stream(mp4wrapper, data):
-    if remux_video_stream.timestamp:
-        timedelta = time.time() - remux_video_stream.timestamp
-        speed = 8 * len(data) / timedelta
+#    if remux_video_stream.timestamp:
+#        timedelta = time.time() - remux_video_stream.timestamp
+#        speed = 8 * len(data) / timedelta
 #        print('Speed', speed, 'bits/sec', end='     \r')
-    else:
-        speed = 0
-    remux_video_stream.timestamp = time.time()
+#    else:
+#        speed = 0
+#    remux_video_stream.timestamp = time.time()
     recoded = mp4wrapper.rewrite(data)
 #    if recoded: print('remuxed',  len(recoded), end='    \r')
     return recoded
 
-remux_video_stream.timestamp = None
+#remux_video_stream.timestamp = None
 
 def streamer(maxstreams, config_fn, forced_params, section_name, box_name, streamer_q, server_port):
     global streamer_qs, stati, num_streams
@@ -948,7 +964,7 @@ def streamer(maxstreams, config_fn, forced_params, section_name, box_name, strea
                                 sure_sendall(stream_socket, msg)
                                 cum_msg_len += len(msg)
                         timedelta = time.time() - speed_timestamp
-                        if timedelta > 10: # averaged over 10s
+                        if timedelta > 5: # averaged over 5s
                             speed_timestamp = time.time()
                             speed_raw = cum_msg_len / timedelta
                             cum_msg_len = 0
@@ -967,7 +983,7 @@ def streamer(maxstreams, config_fn, forced_params, section_name, box_name, strea
                         my_num_streams = my_num_streams - 1
                         continue
                 msg = b''
-                
+
                 if (not streamer_q.empty()):
                     cmd, data = parse_cmd(streamer_q.get())
                     print( name, 'Got Streamer Control Message', cmd )
@@ -1006,12 +1022,12 @@ def streamer(maxstreams, config_fn, forced_params, section_name, box_name, strea
                         print(ts(), name, 'got ProHD', channel, sender_ip)
                         stream_ip = primary_stream_client
                         if not RemoteLocked(sender_ip):
-                            SendKeycode( channel, rccode)                              
+                            SendKeycode( channel, rccode)
                     elif cmd == 'IR':
                         print('IR', data)
                         for key in data:
                             sender_ip = key[1:].decode('utf-8')
-                            stream_ip = primary_stream_client                            
+                            stream_ip = primary_stream_client
                             if not RemoteLocked( sender_ip ):
                                 print(ts(), name,'Sending IR keycode', key[0], rccode, 'for', sender_ip)
                                 SendKeycode(str(key[0]), rccode )
@@ -1087,7 +1103,7 @@ def remote_control_stream( connection, client, request, server_port):
 #    print('\r\nStarting remote control stream handler for ', str(client), 'to port', http_port)
     remote_control_socket =  socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     remote_control_socket.connect(('127.0.0.1', http_port ))  ## Send Packets to Flask
-    print('Remote Control Connected')
+#    print('Remote Control Connected')
 #    print('GOT', request )
     request = fix_host(request)
     remote_control_socket.sendall(request)
@@ -1268,7 +1284,7 @@ def ConnectionManager(config_fn):
  #               print('bad data')
                 data = 'Bad Request'
             if 'GET' in data and 'HTTP' in data \
-                 and not ('/remote' in data_1stline_lower or '/webplay' in data_1stline_lower or 'favicon.ico' in data_1stline_lower or '.php' in data_1stline_lower or '.html' in data_1stline_lower):
+                 and not ('/stdout' in data_1stline_lower or '/remote' in data_1stline_lower or '/webplay' in data_1stline_lower or 'favicon.ico' in data_1stline_lower or '.php' in data_1stline_lower or '.html' in data_1stline_lower):
                 start_uri = data.find('GET') + 3
                 end_uri = data.find('HTTP', start_uri)
                 uri = data[start_uri:end_uri]
@@ -1337,7 +1353,8 @@ def ConnectionManager(config_fn):
                     connection = closeconn(connection)
                     continue
             elif 'GET' in data or 'POST' in data and 'HTTP' in data:
-                print(ts(), ' RemoteControl connection from', str(client_address))
+                if 'stdout' not in data:
+                    print(ts(), ' RemoteControl connection from', str(client_address))
                 Thread(target=remote_control_stream, args=(connection, client_address, data, local_port)).start()
             elif data == 'GETSLINGBOXIDS': 
                 print('GETSLINGBOXIDS Request' );
@@ -2023,7 +2040,8 @@ for config_fn in sys.argv[1:] :
 
         @app.route('/<path:text>', methods=["GET"])
         def index(text):
-            print('GET', text)
+            if text != 'stdout':
+                print('GET', text)
             if text[1:].startswith('emote'):
                 streamer, client, remote = get_streamer( request, text )
  #               print('GetStreamerResult', streamer, client, remote)
@@ -2038,6 +2056,11 @@ for config_fn in sys.argv[1:] :
                         return render_template_string( page )
                 else:
                     abort(404)
+            elif text == 'stdout':
+                out = (x.strip() for x in print.buffer)
+                out = (x for x in out if x)
+                out = (html.escape(x) for x in out)
+                return '<br>\n'.join(out)
             else:
                 text = os.getcwd() + '/' + text
                 if text.endswith('.php') :

@@ -55,7 +55,7 @@ class Mp4Rewrapper:
         You can call this repeatedly, and it will keep producing
         valid MP4 fragments as soon as enough input has accumulated.
         """
-        #print(self.lock)
+
         with self.lock:
             # send the next piece of raw stream
             self.proc.stdin.write(in_chunk)

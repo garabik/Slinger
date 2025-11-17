@@ -10,6 +10,7 @@
     <script>eruda.init();</script>
     -->
     <script>
+
 // control the remote with your keyboard
 const keyMap = new Map();
 
@@ -44,6 +45,13 @@ keyMap.set('R',  74);
 keyMap.set('G',  75);
 keyMap.set('Y',  76);
 keyMap.set('B',  77);
+
+// key map for local handling (not IR remote keys)
+const localKeyMap = new Map();
+localKeyMap.set('c', 'showhidelog');
+localKeyMap.set('z', 'showhideremote');
+localKeyMap.set('a', 'togglefullscreen');
+
 
 // for swiping events
 const chup_code = 38; // ArrowUp
@@ -81,7 +89,7 @@ html, body {
   align-items: center;
   border: none;
   background-color: rgba(0, 0, 0, 0.2);
-  z-index: 20;
+  z-index: 30;
 }
 
 #remote iframe {
@@ -111,7 +119,7 @@ html, body {
   overflow: hidden;
   background-color: yellow;
   aspect-ratio: 16 / 9;
-  z-index: 1;
+  z-index: 10;
 }
 
 #videowrap {
@@ -120,7 +128,7 @@ html, body {
   padding: 0;
   margin: auto;
   background-color: rgba(.1, 0, .1, 0.2);
-  z-index: 10;
+  z-index: 20;
 }
 
 #videocontrols {
@@ -128,7 +136,7 @@ html, body {
   bottom: 0;
   left: 35vw;
   max-width: 64vw;
-  z-index: 30;
+  z-index: 40;
 }
 
 #videocontrols button, #videocontrols details {
@@ -172,6 +180,20 @@ html, body {
   display: none;
 }
 
+#console_output {
+  color: #bfb;
+  font-weight: bold;
+  background-color: rgba(0, 0, 0, 0.8);
+  font-family: monospace;
+  padding: 1em;
+  margin: 1em;
+  overflow-y: scroll;
+  position: absolute;
+  top: 0;
+  left: 35vw;
+  z-index: 35;
+}
+
     </style>
 </head>
 
@@ -182,6 +204,7 @@ html, body {
   <div id="remote" style="display: none;">
     <iframe id="remoteframe" src="Remote.html" frameborder="0"></iframe>
   </div>
+  <div id="console_window" style="display:none;"><div id="console_output">...</div></div>
   <div id="videocontrols">
     <div id="cnt_status_bar" onclick="videoRewindTo();"><span id="cnt_status">no video</span><span id="currentTimeMarker"></span></div>
     <button id="cnt_videoplay" onclick="videoPlayPause();">⏵ Play</button>
@@ -216,11 +239,12 @@ html, body {
 
       Bitrate:<input type="text" id="cnt_bitrate" min="0" max="3000" style="width: 6em;" oninput="forced_bitrate = this.value;">kbps
     </details>
+    <button id="cnt_consolewindow" onclick="toggleConsoleWindow();">🖥 Log</button>
   </div>
   <div id="videowrap" tabindex="-1" onclick="toggleRemoteAndControls();" ondblclick="toggleFullscreen();">
       <div id="videoaspect">
         <video id="video" preload="none" onloadstart="videoStatusBar()" onpause="videoStatusBar()" onplay="videoStatusBar()" onprogress="videoProgress()">
-            Your browser does not support the video tag.
+            Strange, no video tag supported.
         </video>
       </div> <!-- videoaspect -->
   </div> <!-- videowrap -->
@@ -273,26 +297,26 @@ function popup(message) {
 }
 
 // visual effects, video screen wiggles to the left or right
-function scrRollLeft() {
+function effectScrollLeft() {
     const videowrap = document.getElementById('videowrap');
     videowrap.animate([
         { transform: 'translateX(0px)' },
-        { transform: 'translateX(-90vw)' },
+        { transform: 'translateX(-70vw)' },
         { transform: 'translateX(0px)' }
     ], {
-        duration: 1000,
+        duration: 300,
         iterations: 1
     });
 }
 
-function scrRollRight() {
+function effectScrollRight() {
     const videowrap = document.getElementById('videowrap');
     videowrap.animate([
         { transform: 'translateX(0px)' },
-        { transform: 'translateX(90vw)' },
+        { transform: 'translateX(70vw)' },
         { transform: 'translateX(0px)' }
     ], {
-        duration: 1000,
+        duration: 300,
         iterations: 1
     });
 }
@@ -342,10 +366,10 @@ function swipeHandler(direction, startEvent, endEvent) {
     }
 
     if (direction === 'up' || direction === 'right') {
-        scrRollRight();
+        effectScrollRight();
         sendCode('fromSwipe_up', chup_code); // ArrowUp
     } else if (direction === 'down' || direction === 'left') {
-        scrRollLeft();
+        effectScrollLeft();
         sendCode('fromSwipe_down', chdown_code); // ArrowDown
 //    } else if (direction === 'click') {
 //        toggleRemoteAndControls();
@@ -395,6 +419,8 @@ function getSeekableEnd(v) {
     return NaN;
 };
 
+/*
+// not used, very unreliable
 function chaseLiveEdge(v) {
     const EDGE_DIST = 3.0; // seconds
     const EDGE_DIST_MAX = 6.0; // at this distance, playback rate is maxed
@@ -419,6 +445,7 @@ function chaseLiveEdge(v) {
     v.playbackRate = playbackRate;
     console.log('PR', v.playbackRate)
 }
+*/
 
 function videoStatusBar() {
     const video = document.getElementById('video');
@@ -488,14 +515,18 @@ function videoRewind() {
         popup("Not seekable");
         return;
     }
-    if (v.readyState >= 2) { // HAVE_CURRENT_DATA
+    if (v.readyState >= 1) { // HAVE_METADATA
         seekableend = getSeekableEnd(v);
         if (!seekableend) {
             popup("No seekable end");
             return;
         }
-        v.currentTime = Math.max(v.currentTime - 10, 0);
-        popup("-10s");
+        let delta = 10;
+        if (seekableend - v.currentTime < 5) {
+            delta = 2;
+        }
+        v.currentTime = Math.max(v.currentTime - delta, 0);
+        popup(-delta+"s");
     }
 };
 
@@ -507,7 +538,7 @@ function videoRewindTo() {
         popup("Not seekable");
         return;
     }
-    if (v.readyState >= 2) { // HAVE_CURRENT_DATA
+    if (v.readyState >= 1) { // HAVE_METADATA
         seekableend = getSeekableEnd(v);
         if (!seekableend) {
             popup("No seekable end");
@@ -532,7 +563,7 @@ function videoFF() {
         popup("Not seekable");
         return;
     }
-    if (v.readyState >= 2) { // HAVE_CURRENT_DATA
+    if (v.readyState >= 1) { // HAVE_METADATA
         seekableend = getSeekableEnd(v);
         if (!seekableend) {
             popup("No seekable end");
@@ -627,6 +658,19 @@ function videoStop() {
     videoStatusBar();
 };
 
+function toggleConsoleWindow() {
+    popup("Toggle console");
+    var console_window = document.getElementById('console_window');
+    if (console_window.style.display === 'none' || console_window.style.display === '') {
+        console_window.style.display = 'block'; // Show the console window
+    } else {
+        console_window.style.display = 'none'; // Hide the console window
+    }
+    const button = document.getElementById('cnt_consolewindow');
+    button.innerHTML = console_window.style.display === 'none' ? "🖥 Log" : "✖ Log";
+    event.stopPropagation();
+}
+
 function toggleRemote() {
     popup("Toggle remote");
     var remoteDiv = document.getElementById('remote');
@@ -670,13 +714,13 @@ function toggleFullscreen() {
 
     if (document.fullscreenElement) {
         document.exitFullscreen();
-        button.innerHTML = '<sup>⇱</sup><sub>⇲</sub> Fullscreen';
+        button.innerHTML = '<sup>⇱</sup><sub>⇲</sub> FullScr';
     } else {
         player.requestFullscreen = player.requestFullscreen || player.webkitRequestFullscreen || player.mozRequestFullScreen || player.msRequestFullscreen;
         player.requestFullscreen().catch(err => {
-            console.error(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
+            console.error(`Error attempting full-screen: ${err.message} (${err.name})`);
         });
-        button.innerHTML = '<sup>⇲</sup><sub>⇱</sub> Fullscreen';
+        button.innerHTML = '<sup>⇲</sup><sub>⇱</sub> FullScr';
     };
 };
 
@@ -760,6 +804,21 @@ setInterval(() => {
         videoErrTimestamp = Date.now();
     }
     */
+
+    // if console window is open, update console output
+    var console_window = document.getElementById('console_window');
+    if (console_window.style.display === 'block') {
+        fetch('/stdout')
+        .then(response => response.text())
+        .then(data => {
+            const console_output = document.getElementById('console_output');
+            console_output.innerHTML = data;
+            console_output.scrollTop = console_output.scrollHeight; // scroll to bottom
+        })
+        .catch(error => {
+            console.error('Error fetching console output:', error);
+        });
+    }
 }, 1000);
 
 const irFlash = [
@@ -814,6 +873,20 @@ function handleKey(event) {
 
     // if in INPUT, return
     if (event.target.tagName === 'INPUT') {
+        return;
+    }
+
+    // if in localKeyMap, handle locally
+    if (localKeyMap.has(event.key)) {
+        event.preventDefault();
+        const action = localKeyMap.get(event.key);
+        if (action === 'showhidelog') {
+            toggleConsoleWindow();
+        } else if (action === 'showhideremote') {
+            toggleRemoteAndControls();
+        } else if (action === 'togglefullscreen') {
+            toggleFullscreen();
+        }
         return;
     }
 

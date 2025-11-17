@@ -94,7 +94,7 @@ If your remote device is powered off and you need the remote to power it on, the
 5. The player disconnects from the Slinger server
 6. Any subsequent attempt to press the Power button will be ignored.
 
-Fortunately, there is enough time (10 seconds or so) between the points 4. and 5. where you can use the remote... If you miss the window, hit the Stop button and then Play and try again. However, even if you powered on the device, the player has already ingested some packets without the video track, and will hang (and then disconnect) again. So you will have to repeat the Stop and Play sequence again, or even reload the webpage, and then it should work. Unfortunately, there is no visual feedback.
+Fortunately, there is enough time (10 seconds or so) between the points 4. and 5. where you can use the remote... If you miss the window, hit the Stop button and then Play and try again. However, even if you powered on the device, the player has already ingested some packets without the video track, and will hang (and then disconnect) again. So you will have to repeat the Stop and Play sequence again, or even reload the webpage, and then it should work. Unfortunately, there is no visual feedback. This is why I implemented the `Log` button, to see the `slingbox_server.py` standard output.
 
 ## Streaming
 
@@ -131,3 +131,18 @@ There are buttons for rewind/fast forward by ±10 sesconds, and the status bar d
 
 This has been tested only with Slingbox Pro HD, on Chromium and Firefox on Linux (Opera on Linux does not work, known bug in linking with ffmpeg), and on Firefox, Opera and Chrome on Android. I recommend using Firefox, if nothing else, for the audio syncing problems in Chrome.
 
+# Video Controls
+
+Short description of video control buttons:
+
+ * `state` - statusbar, display playing status, doubles as video progress bar, clicking on it rewinds video to this position (if being played)
+ * `Play/Pause` - play or pause the video
+ * `Stop` - stop the video (removes source)
+ * `-10` - rewind 10 seconds
+ * `+10` - fast forward 10 seconds
+ * `FullScr` - toggle fullscreen mode
+ * `Remote` - toggle remote control window
+ * `Mute` - mute/unmute audio (locally in the browser)
+ * `16/9` - toggle aspect ratio between 16:9, 4:3 and fit to window
+ * `Opts` - expand/collapse options panel (resolution, bitrate). `Stop` and `Play` the video to apply changes.
+ * `Log` - expand/collapse log panel (debug output from `slingbox_server.py`)
