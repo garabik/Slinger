@@ -75,7 +75,13 @@ The remote can be controlled by a keyboard, using the following keys:
  * PageUp, PageDown
  * R, G, B, Y (capital letters, with Shift) - red, green, blue, yellow buttons on the remote
 
-These keys follow my remote, but they should be somewhat sensible for a range of remote types. If you need to change them, edit the keyMap.set definitions at the top of `webplay.html`.
+These keys follow my remote, but they should be somewhat sensible for a range of remote types. If you need to change them, edit the `keyMap.set` definitions at the top of `webplay.html`.
+
+Other keys do not send remote control events, but control the player locally (you can edit the `localKeyMap.set` if you need to change the assignments):
+
+ * c - toggle server log (console)
+ * z - toggle remote control window
+ * a - toggle fullscreen mode
 
 For touchscreen devices, swiping your finger up/down sends the up/down events (i.e. switch channels). Because on some mobile browsers swiping down reloads the page, you can also (somewhat confusingly) swipe left/right to switch channels.
 
