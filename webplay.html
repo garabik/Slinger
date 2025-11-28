@@ -147,7 +147,7 @@ html, body {
   padding: 0.5em 0.5em;
   margin: 0.2em;
   cursor: crosshair;
-  font-family: monospace;
+  font-family: sans-serif;
   height: 5ex;
 }
 
@@ -596,6 +596,7 @@ function videoPlayPause() {
     if (!video.src || video.src === "") {
         console.log("Setting video source");
         forceVideoStart();
+        consoleWindowOn();
     };
 
     const button = document.getElementById('cnt_videoplay');
@@ -607,10 +608,12 @@ function videoPlayPause() {
             playPromise.then(() => {
                 console.log("Video is playing");
                 videoStatusBar();
-                button.innerHTML = "⏸  Pause";
+                consoleWindowOff();
+                button.innerHTML = "⏸ Pause";
             }).catch(error => {
                 console.error("Error playing video:", error);
                 popup("Error playing video");
+                button.innerHTML = "⚠ Err";
             });
         } else {
             console.log("play promise undefined");
@@ -658,16 +661,28 @@ function videoStop() {
     videoStatusBar();
 };
 
+function consoleWindowOn() {
+    var console_window = document.getElementById('console_window');
+    console_window.style.display = 'block';
+    const button = document.getElementById('cnt_consolewindow');
+    button.innerHTML = "✖ Log";
+}
+
+function consoleWindowOff() {
+    var console_window = document.getElementById('console_window');
+    console_window.style.display = 'none';
+    const button = document.getElementById('cnt_consolewindow');
+    button.innerHTML = "🖥 Log";
+}
+
 function toggleConsoleWindow() {
     popup("Toggle console");
     var console_window = document.getElementById('console_window');
     if (console_window.style.display === 'none' || console_window.style.display === '') {
-        console_window.style.display = 'block'; // Show the console window
+        consoleWindowOn();
     } else {
-        console_window.style.display = 'none'; // Hide the console window
+        consoleWindowOff();
     }
-    const button = document.getElementById('cnt_consolewindow');
-    button.innerHTML = console_window.style.display === 'none' ? "🖥 Log" : "✖ Log";
     event.stopPropagation();
 }
 

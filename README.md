@@ -100,7 +100,7 @@ If your remote device is powered off and you need the remote to power it on, the
 5. The player disconnects from the Slinger server
 6. Any subsequent attempt to press the Power button will be ignored.
 
-Fortunately, there is enough time (10 seconds or so) between the points 4. and 5. where you can use the remote... If you miss the window, hit the Stop button and then Play and try again. However, even if you powered on the device, the player has already ingested some packets without the video track, and will hang (and then disconnect) again. So you will have to repeat the Stop and Play sequence again, or even reload the webpage, and then it should work. Unfortunately, there is no visual feedback. This is why I implemented the `Log` button, to see the `slingbox_server.py` standard output.
+Fortunately, there is enough time (10 seconds or so) between the points 4. and 5. where you can use the remote... If you miss the window, hit the Stop button and then Play and try again. However, even if you powered on the device, the player has already ingested some packets without the video track, and will hang (and then disconnect) again. So you will have to repeat the Stop and Play sequence again, or even reload the webpage, and then it should work. Unfortunately, there is no visual feedback. This is why I implemented the `Log` button, to see the `slingbox_server.py` standard output. If you click on the Start button, the log automatically turns on, so you can see when to press the Power button (when the stream starts).The log turns off automatically when the video starts playing.
 
 ## Streaming
 
