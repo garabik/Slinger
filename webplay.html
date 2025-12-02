@@ -613,7 +613,7 @@ function videoPlayPause() {
             }).catch(error => {
                 console.error("Error playing video:", error);
                 popup("Error playing video");
-                button.innerHTML = "⚠ Err";
+                button.innerHTML = "⚠ Play";
             });
         } else {
             console.log("play promise undefined");
@@ -627,7 +627,7 @@ function videoPlayPause() {
     } else if (video.playing) {
         button.innerHTML = "⏸ Pause";
     } else if (video.paused && video.ended) {
-        button.innerHTML = "⚠ Err";
+        button.innerHTML = "⚠ Play";
     } else {
         button.innerHTML = "⌛ Play";
     }
