@@ -51,7 +51,14 @@ const localKeyMap = new Map();
 localKeyMap.set('c', 'showhidelog');
 localKeyMap.set('z', 'showhideremote');
 localKeyMap.set('a', 'togglefullscreen');
-
+localKeyMap.set('MediaPlayPause', 'playpause');
+localKeyMap.set('MediaStop', 'stop');
+localKeyMap.set('MediaRewind', 'rewind');
+localKeyMap.set('MediaFastForward', 'fastforward');
+localKeyMap.set('Tab', 'showhideremote');
+localKeyMap.set('MediaTrackNext', 'nexttrack');
+localKeyMap.set('MediaTrackPrevious', 'previoustrack');
+localKeyMap.set('BrowserSearch', 'showhidelog');
 
 // for swiping events
 const chup_code = 38; // ArrowUp
@@ -144,9 +151,8 @@ html, body {
   color: white;
   border: none;
   border-radius: 0.3em;
-  padding: 0.5em 0.5em;
+  padding: 0.3em 0.3em;
   margin: 0.2em;
-  cursor: crosshair;
   font-family: sans-serif;
   height: 5ex;
 }
@@ -160,6 +166,7 @@ html, body {
 #videocontrols details summary {
   background-color: #333;
   padding: 0.2em;
+  font-family: sans-serif;
 }
 
 #videocontrols #cnt_status_bar {
@@ -879,13 +886,6 @@ function sendCode(buttonName, buttonValue) {
 function handleKey(event) {
     //console.log('KBD detected:', event.key);
 
-    // if the key is a Tab, toggle remote
-    if (event.key === 'Tab') {
-        toggleRemoteAndControls();
-        event.preventDefault(); // Prevent default tab behavior
-        return;
-    }
-
     // if in INPUT, return
     if (event.target.tagName === 'INPUT') {
         return;
@@ -901,6 +901,18 @@ function handleKey(event) {
             toggleRemoteAndControls();
         } else if (action === 'togglefullscreen') {
             toggleFullscreen();
+        } else if (action === 'playpause') {
+            videoPlayPause();
+        } else if (action === 'stop') {
+            videoStop();
+        } else if (action === 'rewind') {
+            videoRewind();
+        } else if (action === 'fastforward') {
+            videoFF();
+        } else if (action === 'nexttrack') {
+            goEnd();
+        } else if (action === 'previoustrack') {
+            videoStop();
         }
         return;
     }
@@ -917,9 +929,7 @@ function handleKey(event) {
 document.getElementById('videowrap').addEventListener('keydown', handleKey);
 document.getElementById('videocontrols').addEventListener('keydown', handleKey);
 
-
 </script>
-
 
 </body>
 </html>
